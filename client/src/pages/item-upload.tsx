@@ -19,11 +19,11 @@ import { useForm } from "react-hook-form";
 import { Camera, Upload, Image, X, Loader2 } from "lucide-react";
 
 const itemSchema = z.object({
-  name: z.string().min(1, "Item name is required"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  size: z.string().min(1, "Size is required"),
-  pricePerDay: z.coerce.number().min(1, "Price must be at least ₹1"),
-  categoryId: z.coerce.number().min(1, "Category is required"),
+  name: z.string().min(1, "Item name is required").max(100, "Item name must be less than 100 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description must be less than 500 characters"),
+  size: z.string().min(1, "Size is required").max(20, "Size must be less than 20 characters"),
+  pricePerDay: z.coerce.number().min(1, "Price must be at least ₹1").max(10000, "Price must be less than ₹10,000"),
+  categoryId: z.coerce.number().min(1, "Please select a category"),
 });
 
 type ItemFormValues = z.infer<typeof itemSchema>;
@@ -47,8 +47,16 @@ export default function ItemUpload() {
     return null;
   }
   
+  // Define category interface 
+  interface Category {
+    id: number;
+    name: string;
+    icon?: string;
+    parentId?: number | null;
+  }
+  
   // Fetch categories
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] as Category[] } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
   });
   
@@ -58,9 +66,10 @@ export default function ItemUpload() {
       name: "",
       description: "",
       size: "",
-      pricePerDay: 0,
-      categoryId: 0,
+      pricePerDay: 100, // Default to 100 rupees which is a valid amount
+      categoryId: undefined as unknown as number, // Make the select show the placeholder initially
     },
+    mode: "onChange" // Validate on change for better user feedback
   });
   
   // Handle file upload
@@ -133,15 +142,45 @@ export default function ItemUpload() {
       navigate("/my-items");
     },
     onError: (error: any) => {
-      toast({
-        title: "Error Listing Item",
-        description: error.message || "There was an error listing your item. Please try again.",
-        variant: "destructive",
-      });
+      // Check if this is a validation error response from the server
+      if (error.status === 400 && error.data?.errors) {
+        // Format validation errors nicely
+        const errorMessages = error.data.errors.map((err: any) => {
+          return `${err.message || "Validation error"}`;
+        }).join("\n");
+        
+        toast({
+          title: "Please fix the following errors:",
+          description: errorMessages,
+          variant: "destructive",
+        });
+      } else {
+        // Generic error handling
+        const errorMessage = error.message || error.data?.message || "There was an error listing your item. Please try again.";
+        
+        toast({
+          title: "Error Listing Item",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+      
+      // Log the error for debugging
+      console.error("Item upload error:", error);
     },
   });
   
   const onSubmit = (data: ItemFormValues) => {
+    // Validate image presence before submitting
+    if (!itemImage) {
+      toast({
+        title: "Photo Required",
+        description: "Please upload or take a photo of your item before submitting",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     uploadMutation.mutate(data);
   };
   
@@ -159,15 +198,25 @@ export default function ItemUpload() {
           <div className="space-y-8">
             {/* Item Photo Section */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Item Photo</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-lg font-medium">Item Photo</h3>
+                <span className="text-destructive">*</span>
+                <span className="text-sm text-muted-foreground">(Required)</span>
+              </div>
               
               {previewUrl ? (
                 <div className="space-y-4">
-                  <div className="rounded-lg overflow-hidden border shadow-sm max-w-md mx-auto">
-                    <img src={previewUrl} alt="Item Preview" className="w-full h-auto" />
+                  <div className="rounded-lg overflow-hidden border border-green-400 shadow-sm max-w-md mx-auto">
+                    <div className="relative">
+                      <img src={previewUrl} alt="Item Preview" className="w-full h-auto" />
+                      <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </div>
+                    </div>
                   </div>
                   
-                  <div className="flex justify-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-sm text-green-600 font-medium">Photo uploaded successfully</p>
                     <Button variant="outline" onClick={handleResetImage}>
                       <X className="mr-2 h-4 w-4" />
                       Change Photo
@@ -212,12 +261,13 @@ export default function ItemUpload() {
               {activeTab === "upload" && !previewUrl && (
                 <div className="mt-6">
                   <div
-                    className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="border-2 border-dashed border-destructive rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => document.getElementById('item-upload')?.click()}
                   >
-                    <Image className="h-10 w-10 text-gray-400 mb-4" />
-                    <h4 className="font-medium mb-1">Upload Item Photo</h4>
-                    <p className="text-sm text-gray-500 mb-4">Drag and drop or click to browse</p>
+                    <Image className="h-10 w-10 text-destructive mb-4" />
+                    <h4 className="font-medium mb-1">Upload Item Photo <span className="text-destructive">*</span></h4>
+                    <p className="text-sm text-gray-500 mb-2">Drag and drop or click to browse</p>
+                    <p className="text-xs text-destructive mb-2">Required for listing your item</p>
                     <p className="text-xs text-gray-400">PNG, JPG or JPEG (max. 5MB)</p>
                     
                     <input
@@ -243,7 +293,7 @@ export default function ItemUpload() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Item Name</FormLabel>
+                        <FormLabel>Item Name <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                           <Input placeholder="e.g. Black Formal Suit" {...field} />
                         </FormControl>
@@ -258,7 +308,7 @@ export default function ItemUpload() {
                       name="categoryId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Category</FormLabel>
+                          <FormLabel>Category <span className="text-destructive">*</span></FormLabel>
                           <Select 
                             onValueChange={(value) => field.onChange(parseInt(value))}
                             value={field.value.toString()}
@@ -269,7 +319,7 @@ export default function ItemUpload() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {categories.map((category: any) => (
+                              {categories.map((category: Category) => (
                                 <SelectItem key={category.id} value={category.id.toString()}>
                                   {category.name}
                                 </SelectItem>
@@ -286,7 +336,7 @@ export default function ItemUpload() {
                       name="size"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Size</FormLabel>
+                          <FormLabel>Size <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input placeholder="e.g. L, XL, 42, 38" {...field} />
                           </FormControl>
@@ -304,7 +354,7 @@ export default function ItemUpload() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>Description <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                           <Textarea 
                             placeholder="Describe your item, including condition, material, style, etc." 
@@ -322,7 +372,7 @@ export default function ItemUpload() {
                     name="pricePerDay"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Price per Day (₹)</FormLabel>
+                        <FormLabel>Price per Day (₹) <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
@@ -334,7 +384,12 @@ export default function ItemUpload() {
                     )}
                   />
                   
-                  <div className="pt-4">
+                  <div className="pt-4 space-y-4">
+                    <div className="text-sm text-muted-foreground border-t pt-3">
+                      <p><span className="text-destructive">*</span> All fields marked with an asterisk are required</p>
+                      <p>Please ensure you upload a clear photo of your item to increase rental chances</p>
+                    </div>
+                  
                     <Button 
                       type="submit" 
                       className="w-full"
