@@ -18,11 +18,25 @@ export async function apiRequest(
   const method = options?.method || 'GET';
   const body = options?.body;
   
+  // Add current user ID from localStorage if it exists
+  const userId = localStorage.getItem('userId');
+  const defaultHeaders: Record<string, string> = {};
+  
+  if (userId) {
+    defaultHeaders['user-id'] = userId;
+  }
+  
+  // Content-Type headers for JSON body
+  if (body && typeof body === 'string') {
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: body && typeof body === 'string' 
-      ? { "Content-Type": "application/json", ...(options?.headers || {}) }
-      : options?.headers || {},
+    headers: {
+      ...defaultHeaders,
+      ...(options?.headers || {})
+    },
     body: body,
     credentials: "include",
   });
@@ -43,8 +57,17 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Add user-id header if available
+    const userId = localStorage.getItem('userId');
+    const headers: Record<string, string> = {};
+    
+    if (userId) {
+      headers['user-id'] = userId;
+    }
+    
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

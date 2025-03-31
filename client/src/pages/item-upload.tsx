@@ -96,11 +96,18 @@ export default function ItemUpload() {
       
       const formData = new FormData();
       formData.append("image", itemImage);
-      formData.append("data", JSON.stringify(data));
+      formData.append("data", JSON.stringify({
+        ...data,
+        // Ensure numeric values are properly converted
+        pricePerDay: Number(data.pricePerDay),
+        categoryId: Number(data.categoryId)
+      }));
       
+      // Don't set Content-Type header for FormData - browser will set it with correct boundary
       return apiRequest("/api/items", {
         method: "POST",
         body: formData,
+        headers: {} // Empty headers to prevent Content-Type from being set
       });
     },
     onSuccess: () => {

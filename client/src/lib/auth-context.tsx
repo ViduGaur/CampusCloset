@@ -43,13 +43,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        // Try to get user ID from localStorage for the header
+        const userId = localStorage.getItem('userId');
+        const headers: Record<string, string> = {};
+        
+        if (userId) {
+          headers['user-id'] = userId;
+        }
+
         const res = await fetch("/api/user", {
           credentials: "include",
+          headers
         });
 
         if (res.ok) {
           const userData = await res.json();
           setUser(userData);
+          // Ensure userId is stored in localStorage
+          localStorage.setItem('userId', userData.id.toString());
         }
       } catch (error) {
         console.error("Auth check error:", error);
@@ -63,6 +74,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (userData: User) => {
     setUser(userData);
+    // Store user ID in localStorage for auth headers
+    localStorage.setItem('userId', userData.id.toString());
     setLoading(false);
   };
 
@@ -71,8 +84,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Call logout API if available
       // await apiRequest("POST", "/api/logout");
 
-      // For now, just remove the user from state
+      // Remove the user from state and localStorage
       setUser(null);
+      localStorage.removeItem('userId');
       navigate("/");
       
       toast({
