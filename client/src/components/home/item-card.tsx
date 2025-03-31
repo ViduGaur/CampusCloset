@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { MapPin } from "lucide-react";
-import { formatDistance } from "date-fns";
+import { MapPin, Tag } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface ItemCardProps {
   item: {
@@ -11,6 +11,10 @@ interface ItemCardProps {
     size: string;
     pricePerDay: number;
     imageData: string;
+    categoryId: number;
+    category?: {
+      name: string;
+    };
     owner: {
       id: number;
       hostel: string;
@@ -25,17 +29,10 @@ export function ItemCard({ item }: ItemCardProps) {
     currency: 'USD',
   });
 
-  // Calculate distance between hostels (mock implementation)
-  // In a real app, you'd use actual geolocation data
-  const getDistance = (hostel: string) => {
-    // This is just a mock implementation that returns a random distance
-    return (Math.random() * 2).toFixed(1);
-  };
-
   return (
     <div className="group relative">
       <Link href={`/items/${item.id}`}>
-        <div className="w-full bg-gray-200 rounded-md overflow-hidden group-hover:opacity-75">
+        <div className="w-full bg-gray-200 rounded-md overflow-hidden group-hover:opacity-75 relative">
           <AspectRatio ratio={1 / 1}>
             <img
               src={item.imageData.startsWith('data:') 
@@ -45,6 +42,14 @@ export function ItemCard({ item }: ItemCardProps) {
               className="w-full h-full object-center object-cover"
             />
           </AspectRatio>
+          {/* Category tag positioned at the top right */}
+          {item.category && (
+            <div className="absolute top-2 right-2">
+              <Badge variant="secondary" className="bg-white bg-opacity-90 text-gray-800">
+                {item.category.name}
+              </Badge>
+            </div>
+          )}
         </div>
         <div className="mt-4 flex justify-between">
           <div>
@@ -57,7 +62,7 @@ export function ItemCard({ item }: ItemCardProps) {
         </div>
         <div className="mt-2 flex items-center text-sm text-gray-500">
           <MapPin className="h-4 w-4 mr-1" />
-          <p>{item.owner.hostel} ({getDistance(item.owner.hostel)} mi)</p>
+          <p>{item.owner.hostel}</p>
         </div>
       </Link>
     </div>

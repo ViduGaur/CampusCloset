@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Shirt, Briefcase, UserRound, Gem, Footprints, MoreHorizontal } from "lucide-react";
+import { Shirt, Briefcase, UserRound, Gem, Footprints, MoreHorizontal, LayersIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Map category icons to Lucide React components
@@ -13,7 +13,19 @@ const iconMap: Record<string, React.ReactNode> = {
   vest: <Briefcase />,
 };
 
-export function CategoryNavigation() {
+interface CategoryNavigationProps {
+  onCategorySelect?: (categoryId: number | null) => void;
+  selectedCategory?: number | null;
+  showAllOption?: boolean;
+  compact?: boolean;
+}
+
+export function CategoryNavigation({
+  onCategorySelect,
+  selectedCategory = null,
+  showAllOption = false,
+  compact = false
+}: CategoryNavigationProps) {
   const { data: categories, isLoading } = useQuery<any[]>({
     queryKey: ["/api/categories"],
   });
@@ -30,20 +42,78 @@ export function CategoryNavigation() {
 
   const displayCategories = (categories && categories.length > 0) ? categories : defaultCategories;
 
+  const handleCategoryClick = (categoryId: number) => {
+    if (onCategorySelect) {
+      onCategorySelect(categoryId === selectedCategory ? null : categoryId);
+    }
+  };
+
+  const allCategoriesOption = {
+    id: 0,
+    name: "All Categories",
+    icon: "layers",
+    bgColor: "bg-gray-100",
+    textColor: "text-gray-600"
+  };
+
+  // Determine which categories to display
+  let categoriesToDisplay = [...displayCategories];
+  if (showAllOption) {
+    categoriesToDisplay = [allCategoriesOption, ...categoriesToDisplay];
+  }
+
+  // Grid columns based on compact prop
+  const gridCols = compact
+    ? "grid grid-cols-2 gap-2"
+    : "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-center";
+
   return (
-    <div className="bg-white rounded-lg shadow-sm">
-      <div className="px-4 py-5 sm:p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Browse by Category</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-center">
-          {displayCategories.map((category: any) => {
+    <div className={compact ? "" : "bg-white rounded-lg shadow-sm"}>
+      <div className={compact ? "" : "px-4 py-5 sm:p-6"}>
+        {!compact && <h2 className="text-lg font-medium text-gray-900 mb-4">Browse by Category</h2>}
+        <div className={gridCols}>
+          {categoriesToDisplay.map((category: any) => {
             // Get the icon component or use MoreHorizontal as fallback
-            const IconComponent = category.icon in iconMap 
-              ? iconMap[category.icon] 
-              : <MoreHorizontal />;
+            let IconComponent;
+            if (category.icon === "layers") {
+              IconComponent = <LayersIcon />;
+            } else {
+              IconComponent = category.icon in iconMap 
+                ? iconMap[category.icon] 
+                : <MoreHorizontal />;
+            }
               
             // Get background and text colors or use defaults
             const bgColor = category.bgColor || "bg-primary-100";
             const textColor = category.textColor || "text-primary";
+
+            // Check if this category is selected
+            const isSelected = selectedCategory === category.id;
+            const selectedBg = isSelected ? "bg-primary/10" : "";
+
+            // For clickable categories with onCategorySelect vs link navigation
+            if (onCategorySelect) {
+              return (
+                <div 
+                  key={category.id}
+                  onClick={() => handleCategoryClick(category.id)}
+                  className={cn(
+                    "flex flex-col items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer",
+                    selectedBg
+                  )}
+                >
+                  <div className={cn(
+                    "h-10 w-10 rounded-full flex items-center justify-center mb-2",
+                    bgColor
+                  )}>
+                    <span className={textColor}>
+                      {IconComponent}
+                    </span>
+                  </div>
+                  <span className="text-sm text-gray-700">{category.name}</span>
+                </div>
+              );
+            }
 
             return (
               <Link 
@@ -52,7 +122,7 @@ export function CategoryNavigation() {
               >
                 <a className="flex flex-col items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                   <div className={cn(
-                    "h-12 w-12 rounded-full flex items-center justify-center mb-2",
+                    "h-10 w-10 rounded-full flex items-center justify-center mb-2",
                     bgColor
                   )}>
                     <span className={textColor}>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Shirt, Bell } from "lucide-react";
+import { Shirt, Bell, Home, Search, MessageCircle, Package } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,10 +23,10 @@ export function Navbar() {
   };
 
   const navItems = [
-    { name: "Home", path: "/" },
-    { name: "Browse", path: "/browse" },
-    { name: "Messages", path: "/messages" },
-    { name: "My Items", path: "/profile" },
+    { name: "Home", path: "/", icon: <Home className="h-4 w-4 mr-1" /> },
+    { name: "Browse", path: "/browse", icon: <Search className="h-4 w-4 mr-1" /> },
+    { name: "Messages", path: "/messages", icon: <MessageCircle className="h-4 w-4 mr-1" /> },
+    { name: "My Items", path: "/my-items", icon: <Package className="h-4 w-4 mr-1" /> },
   ];
 
   return (
@@ -51,6 +51,7 @@ export function Navbar() {
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
                 >
+                  {item.icon}
                   {item.name}
                 </Link>
               ))}
@@ -151,9 +152,10 @@ export function Navbar() {
                   location === item.path
                     ? "bg-primary-50 border-primary text-primary"
                     : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
-                } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
+                } block pl-3 pr-4 py-2 border-l-4 text-base font-medium flex items-center`}
                 onClick={() => setMobileMenuOpen(false)}
               >
+                {item.icon}
                 {item.name}
               </Link>
             ))}

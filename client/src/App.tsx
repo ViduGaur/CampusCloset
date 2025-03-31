@@ -14,6 +14,9 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import ItemUpload from "@/pages/item-upload";
 import Profile from "@/pages/profile";
 import ItemDetail from "@/pages/item-detail";
+import Browse from "@/pages/browse";
+import Messages from "@/pages/messages";
+import MyItems from "@/pages/my-items";
 
 function Router() {
   return (
@@ -23,9 +26,13 @@ function Router() {
       <Route path="/verification" component={Verification} />
       <Route path="/verification-pending" component={VerificationPending} />
       <Route path="/admin" component={AdminDashboard} />
-      <Route path="/upload" component={ItemUpload} />
+      <Route path="/upload-item" component={ItemUpload} />
       <Route path="/profile/:id" component={Profile} />
+      <Route path="/profile" component={Profile} />
       <Route path="/items/:id" component={ItemDetail} />
+      <Route path="/browse" component={Browse} />
+      <Route path="/messages" component={Messages} />
+      <Route path="/my-items" component={MyItems} />
       <Route component={NotFound} />
     </Switch>
   );

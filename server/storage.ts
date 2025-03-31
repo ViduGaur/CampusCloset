@@ -142,7 +142,7 @@ export class MemStorage implements IStorage {
       password: "password123",
       email: "demo@example.com", 
       fullName: "Demo User",
-      hostel: "North Campus"
+      hostel: "HB3"
     }).then(user => {
       this.updateUser(user.id, {
         isVerified: true,
@@ -198,6 +198,111 @@ export class MemStorage implements IStorage {
         categoryId: 3, // Footwear
         ownerId: user.id,
         imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzZkNGMyMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0id2hpdGUiPkxlYXRoZXIgU2hvZXM8L3RleHQ+PC9zdmc+"
+      });
+      
+      // Create a second user with different hostel
+      this.createUser({
+        username: "another_user",
+        password: "password123",
+        email: "another@example.com",
+        fullName: "Another User",
+        hostel: "HB1"
+      }).then(user2 => {
+        this.updateUser(user2.id, {
+          isVerified: true,
+          isAdmin: false
+        });
+        
+        // Create some items for the second user
+        this.createItem({
+          name: "Floral Party Dress",
+          description: "Beautiful floral dress, perfect for parties and special occasions. Worn only once.",
+          size: "Small",
+          pricePerDay: 150,
+          categoryId: 1, // Clothes
+          ownerId: user2.id,
+          imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YyN2ViOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0id2hpdGUiPkZsb3JhbCBEcmVzczwvdGV4dD48L3N2Zz4="
+        });
+        
+        this.createItem({
+          name: "Designer Handbag",
+          description: "Authentic designer handbag in excellent condition. Perfect accessory for any outfit.",
+          size: "One size",
+          pricePerDay: 200,
+          categoryId: 2, // Accessories
+          ownerId: user2.id,
+          imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzgzNTYyNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0id2hpdGUiPkRlc2lnbmVyIEhhbmRiYWc8L3RleHQ+PC9zdmc+"
+        });
+        
+        this.createItem({
+          name: "White Sneakers",
+          description: "Clean white sneakers, minimal wear. Great for casual outfits.",
+          size: "UK 7",
+          pricePerDay: 70,
+          categoryId: 3, // Footwear
+          ownerId: user2.id,
+          imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YxZjFmMSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0iIzMzMyI+V2hpdGUgU25lYWtlcnM8L3RleHQ+PC9zdmc+"
+        });
+        
+        // Create some rental requests between the two users
+        const now = new Date();
+        const nextWeek = new Date(now);
+        nextWeek.setDate(now.getDate() + 7);
+        
+        // Demo user rents from second user
+        this.createRentalRequest({
+          itemId: 6, // Floral Party Dress
+          requesterId: 1, // Demo user
+          startDate: now,
+          endDate: nextWeek,
+        }).then(request => {
+          // Auto-approve this request
+          this.updateRentalRequest(request.id, {
+            status: "approved"
+          });
+        });
+        
+        // Second user rents from demo user
+        this.createRentalRequest({
+          itemId: 1, // Navy Blue Blazer
+          requesterId: 2, // Second user
+          startDate: now,
+          endDate: nextWeek,
+        }).then(request => {
+          // Auto-approve this request
+          this.updateRentalRequest(request.id, {
+            status: "approved"
+          });
+        });
+        
+        // Add some messages between users
+        this.createMessage({
+          fromUserId: 1, // Demo user
+          toUserId: 2, // Second user
+          content: "Hi, I'm interested in renting your floral dress for an upcoming event.",
+          itemId: 6 // Floral Party Dress
+        });
+        
+        this.createMessage({
+          fromUserId: 2, // Second user
+          toUserId: 1, // Demo user
+          content: "Absolutely! It's available. When do you need it?",
+          itemId: 6 // Floral Party Dress
+        });
+        
+        this.createMessage({
+          fromUserId: 1, // Demo user
+          toUserId: 2, // Second user
+          content: "I was thinking this weekend? Would that work for you?",
+          itemId: 6 // Floral Party Dress
+        });
+        
+        this.createMessage({
+          fromUserId: 2, // Second user
+          toUserId: 1, // Demo user
+          content: "That works! I just approved your request. Enjoy the dress!",
+          itemId: 6 // Floral Party Dress
+        });
       });
     });
   }
