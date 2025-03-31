@@ -1,0 +1,100 @@
+Build a verification system that:
+
+Allows users to upload photos of their college ID
+
+Stores verification requests for manual review
+
+Includes an admin panel for approving verification requests
+
+Only activates accounts after successful verification
+
+Step 3: Develop Item Categories & Management
+Create a database structure for clothing categories:
+
+Main categories (Clothes, Accessories, Footwear)
+
+Subcategories (Formal, Casual, Ethnic, etc.)
+
+Implement an item upload feature:
+
+Photo upload capability (camera access)
+
+Item details (name, description, size)
+
+Rental price and availability settings
+
+Category assignment
+
+Step 4: Build the Feed & Search Functionality
+Design a feed page showing available items:
+
+Grid/list view of items with images
+
+Filtering options by category, size, price
+
+Sorting options (newest, price, popularity)
+
+Implement a search bar with:
+
+Text-based search
+
+Advanced filtering options
+
+Location-based sorting (nearest hostel first)
+
+Step 5: Create Messaging System
+Develop a chat feature allowing:
+
+Direct messaging between potential renters and item owners
+
+Notification system for new messages
+
+Chat history storage
+
+Basic chat UI with timestamps
+
+Step 6: Implement Rating & Trust System
+Build a user rating system:
+
+Star ratings (1-5) for completed transactions
+
+Comment/review functionality
+
+Aggregate rating display on user profiles
+
+Visual indicators for highly-rated users
+
+Step 7: Design User Profiles
+Create profile pages showing:
+
+User information (name, hostel location)
+
+Items they've listed for rent
+
+Trust rating and reviews
+
+Transaction history
+
+Step 8: Add Transaction Management
+Implement a booking system:
+
+Rental request functionality
+
+Approval/rejection by item owner
+
+Rental period tracking
+
+Return confirmation process
+
+Step 9: Test & Debug
+Test all features thoroughly:
+
+User registration and verification flow
+
+Item upload and browsing
+
+Messaging between users
+
+Rating system functionality
+
+Fix any bugs or usability issues
