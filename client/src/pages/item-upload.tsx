@@ -94,8 +94,17 @@ export default function ItemUpload() {
         throw new Error("Please upload or take a photo of your item");
       }
       
+      // Get the user ID from localStorage - we need this for the ownerId in the request
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        throw new Error("You must be logged in to upload items");
+      }
+      
       const formData = new FormData();
       formData.append("image", itemImage);
+      
+      // Include all required fields from the schema (name, description, size, categoryId, pricePerDay)
+      // Let the backend add ownerId and imageData fields
       formData.append("data", JSON.stringify({
         ...data,
         // Ensure numeric values are properly converted
@@ -103,11 +112,16 @@ export default function ItemUpload() {
         categoryId: Number(data.categoryId)
       }));
       
+      // Add user-id to headers for authentication
+      const headers: Record<string, string> = {
+        'user-id': userId
+      };
+      
       // Don't set Content-Type header for FormData - browser will set it with correct boundary
       return apiRequest("/api/items", {
         method: "POST",
         body: formData,
-        headers: {} // Empty headers to prevent Content-Type from being set
+        headers: headers
       });
     },
     onSuccess: () => {

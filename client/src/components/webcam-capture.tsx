@@ -57,7 +57,7 @@ export function WebcamCapture({ onCapture, onCancel }: WebcamCaptureProps) {
             {capturedImage ? (
               <img 
                 src={capturedImage} 
-                alt="Captured ID" 
+                alt="Captured Item" 
                 className="w-full h-auto"
               />
             ) : (
@@ -90,15 +90,15 @@ export function WebcamCapture({ onCapture, onCancel }: WebcamCaptureProps) {
                 </Button>
                 <Button onClick={capture}>
                   <Camera className="mr-2 h-4 w-4" />
-                  Capture ID
+                  Take Photo
                 </Button>
               </>
             )}
           </div>
           
           <div className="mt-4 text-sm text-gray-500 text-center">
-            <p>Position your college ID card clearly in the frame</p>
-            <p>Make sure all details are visible and lighting is good</p>
+            <p>Position your item clearly in the frame</p>
+            <p>Make sure the item is well-lit and all details are visible</p>
           </div>
         </div>
       </CardContent>
