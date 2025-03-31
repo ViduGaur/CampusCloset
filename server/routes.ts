@@ -701,8 +701,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Rental request not found' });
       }
       
+      // Get the item to check ownership
+      const item = await storage.getItem(rentalRequest.itemId);
+      if (!item) {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      
       // Only the requester or owner can mark as completed
-      if (rentalRequest.requesterId !== userId && rentalRequest.ownerId !== userId) {
+      if (rentalRequest.requesterId !== userId && item.ownerId !== userId) {
         return res.status(403).json({ message: 'Unauthorized to update this rental request' });
       }
       
