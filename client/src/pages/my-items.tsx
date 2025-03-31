@@ -10,33 +10,80 @@ import { RentedItemCard } from "@/components/ratings/rented-item-card";
 import { PlusCircle, Package, ShoppingCart, Star } from "lucide-react";
 import { getQueryFn } from "@/lib/queryClient";
 
+// Define interfaces for our data structures
+// Define a partial type that allows flexibility in API responses
+interface Item {
+  id: number;
+  name: string;
+  description: string;
+  size?: string; // Make optional to handle API responses that might not include it
+  pricePerDay: number;
+  imageData: string;
+  isAvailable: boolean;
+  categoryId?: number;
+  category?: {
+    id?: number;
+    name: string;
+  };
+  ownerId: number;
+  owner?: {  // Make optional to handle API responses that might not include it
+    id: number;
+    hostel: string;
+  };
+  createdAt?: string;  // Make optional to handle API responses that might not include it
+}
+
+interface UserInfo {
+  id: number;
+  username: string;
+  fullName?: string;
+  hostel: string;
+  isVerified?: boolean;
+  averageRating?: number;
+  ratingCount?: number;
+}
+
+interface RentalRequest {
+  id: number;
+  itemId: number;
+  requesterId: number;
+  startDate: string;
+  endDate: string;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  createdAt: string;
+  updatedAt?: string;
+  item?: Item;
+  requester?: UserInfo;
+  owner?: UserInfo;
+}
+
 export default function MyItems() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("my-listings");
 
   // Get items the user has listed
-  const { data: myListings, isLoading: myListingsLoading } = useQuery({
-    queryKey: ["/api/items/owner"],
+  const { data: myListings, isLoading: myListingsLoading } = useQuery<Item[]>({
+    queryKey: ["/api/my-items"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!user
   });
 
   // Get rental requests where user is the requester (renting from others)
-  const { data: myRentals, isLoading: myRentalsLoading } = useQuery({
+  const { data: myRentals, isLoading: myRentalsLoading } = useQuery<RentalRequest[]>({
     queryKey: ["/api/my-rental-requests"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!user
   });
 
   // Get rental requests for user's items (lending to others)
-  const { data: lendingRequests, isLoading: lendingRequestsLoading } = useQuery({
+  const { data: lendingRequests, isLoading: lendingRequestsLoading } = useQuery<RentalRequest[]>({
     queryKey: ["/api/my-items/rental-requests"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!user
   });
 
   // Get pending rental requests for user's items
-  const { data: pendingRequests, isLoading: pendingRequestsLoading } = useQuery({
+  const { data: pendingRequests, isLoading: pendingRequestsLoading } = useQuery<RentalRequest[]>({
     queryKey: ["/api/rental-requests/pending"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!user
@@ -82,9 +129,9 @@ export default function MyItems() {
           <TabsTrigger value="my-listings" className="flex items-center">
             <Package className="mr-2 h-4 w-4" />
             My Listings
-            {hasPendingRequests && (
+            {hasPendingRequests && pendingRequests && (
               <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                {Array.isArray(pendingRequests) ? pendingRequests.length : 0}
+                {pendingRequests.length}
               </span>
             )}
           </TabsTrigger>
@@ -103,12 +150,12 @@ export default function MyItems() {
             <div className="text-center py-8">Loading your listings...</div>
           ) : hasMyListings ? (
             <>
-              {hasPendingRequests && (
+              {hasPendingRequests && pendingRequests && (
                 <div className="bg-yellow-50 p-4 rounded-md mb-6">
                   <h3 className="font-medium text-yellow-800 mb-2">Pending Rental Requests</h3>
                   <p className="text-yellow-700 mb-2">
-                    You have {Array.isArray(pendingRequests) ? pendingRequests.length : 0} pending rental 
-                    request{Array.isArray(pendingRequests) && pendingRequests.length !== 1 ? 's' : ''}.
+                    You have {pendingRequests.length} pending rental 
+                    request{pendingRequests.length !== 1 ? 's' : ''}.
                   </p>
                   <Link href="/requests">
                     <Button variant="outline" size="sm">View Requests</Button>
@@ -117,7 +164,7 @@ export default function MyItems() {
               )}
               
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {myListings.map((item: any) => (
+                {myListings.map((item: Item) => (
                   <ItemCard key={item.id} item={item} />
                 ))}
               </div>
@@ -144,7 +191,7 @@ export default function MyItems() {
             <div className="text-center py-8">Loading your rentals...</div>
           ) : hasMyRentals ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {myRentals.map((rental: any) => (
+              {myRentals.map((rental: RentalRequest) => (
                 <RentedItemCard key={rental.id} rental={rental} type="rented" />
               ))}
             </div>
@@ -169,7 +216,7 @@ export default function MyItems() {
             <div className="text-center py-8">Loading lending requests...</div>
           ) : hasLendingRequests ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {lendingRequests.map((rental: any) => (
+              {lendingRequests.map((rental: RentalRequest) => (
                 <RentedItemCard key={rental.id} rental={rental} type="lending" />
               ))}
             </div>

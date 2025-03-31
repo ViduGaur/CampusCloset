@@ -387,6 +387,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get items owned by the authenticated user
+  app.get('/api/my-items', requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getItemsByOwner(req.user.id);
+      
+      // Get category info for each item
+      const itemsWithDetails = await Promise.all(
+        items.map(async (item) => {
+          const category = item.categoryId ? await storage.getCategory(item.categoryId) : null;
+          
+          return {
+            ...item,
+            category: category ? {
+              id: category.id,
+              name: category.name
+            } : null
+          };
+        })
+      );
+      
+      res.status(200).json(itemsWithDetails);
+    } catch (error) {
+      console.error('Error getting user items:', error);
+      res.status(500).json({ message: 'An error occurred while getting your items' });
+    }
+  });
+  
   // ==================== Rental Request Routes ====================
   
   // Create a rental request
@@ -539,36 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get requests for my items (as an owner)
-  app.get('/api/my-items/rental-requests', requireAuth, async (req, res) => {
-    try {
-      const rentalRequests = await storage.getRentalRequestsByOwner(req.user.id);
-      
-      // Get requester and item info for each request
-      const requestsWithDetails = await Promise.all(
-        rentalRequests.map(async (request) => {
-          const requester = await storage.getUser(request.requesterId);
-          const item = await storage.getItem(request.itemId);
-          
-          return {
-            ...request,
-            requester: requester ? {
-              id: requester.id,
-              username: requester.username,
-              fullName: requester.fullName,
-              hostel: requester.hostel,
-            } : null,
-            item: item || null,
-          };
-        })
-      );
-      
-      res.status(200).json(requestsWithDetails);
-    } catch (error) {
-      console.error('Error getting rental requests for my items:', error);
-      res.status(500).json({ message: 'An error occurred while getting rental requests for my items' });
-    }
-  });
+
   
   // Update rental request status (mark as complete)
   app.patch('/api/rental-requests/:id/status', requireAuth, requireVerified, async (req, res) => {
@@ -618,28 +616,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get my rental requests (where I am the requester)
-  app.get('/api/my-rental-requests', requireAuth, async (req, res) => {
+
+
+  // Get pending rental requests for my items
+  app.get('/api/rental-requests/pending', requireAuth, async (req, res) => {
     try {
       const userId = req.user.id;
-      const rentalRequests = await storage.getRentalRequestsByRequester(userId);
+      const rentalRequests = await storage.getRentalRequestsByOwner(userId);
+      
+      // Filter for pending requests only
+      const pendingRequests = rentalRequests.filter(request => request.status === "pending");
       
       // Get details for each request
       const requestsWithDetails = await Promise.all(
-        rentalRequests.map(async (request) => {
+        pendingRequests.map(async (request) => {
           const item = await storage.getItem(request.itemId);
-          const owner = item ? await storage.getUser(item.ownerId) : null;
+          const requester = await storage.getUser(request.requesterId);
           return {
             ...request,
             item,
-            owner: owner ? {
-              id: owner.id,
-              username: owner.username,
-              fullName: owner.fullName,
-              hostel: owner.hostel,
-              isVerified: owner.isVerified,
-              averageRating: owner.avgRating,
-              ratingCount: owner.ratingCount,
+            requester: requester ? {
+              id: requester.id,
+              username: requester.username,
+              fullName: requester.fullName,
+              hostel: requester.hostel,
+              isVerified: requester.isVerified
             } : null,
           };
         })
@@ -647,11 +648,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(200).json(requestsWithDetails);
     } catch (error) {
-      console.error('Error getting user\'s rental requests:', error);
-      res.status(500).json({ message: 'An error occurred while getting rental requests' });
+      console.error('Error getting pending rental requests:', error);
+      res.status(500).json({ message: 'An error occurred while getting pending rental requests' });
     }
   });
-
+  
   // Get rental requests for my items (where I am the owner)
   app.get('/api/my-items/rental-requests', requireAuth, async (req, res) => {
     try {
