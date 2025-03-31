@@ -122,16 +122,8 @@ export default function ItemUpload() {
       }));
       
       // Add user-id to headers for authentication
-      const headers: Record<string, string> = {
-        'user-id': userId
-      };
-      
-      // Don't set Content-Type header for FormData - browser will set it with correct boundary
-      return apiRequest("/api/items", {
-        method: "POST",
-        body: formData,
-        headers: headers
-      });
+      // userId will be automatically added by apiRequest function
+      return apiRequest("POST", "/api/items", formData);
     },
     onSuccess: () => {
       toast({

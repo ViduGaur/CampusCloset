@@ -60,13 +60,7 @@ export default function Verification() {
       const formData = new FormData();
       formData.append("idImage", idImage);
 
-      return apiRequest("/api/verification", {
-        method: "POST",
-        body: formData,
-        headers: {
-          // Don't set Content-Type here as it will be set automatically with the boundary
-        },
-      });
+      return apiRequest("POST", "/api/verification", formData);
     },
     onSuccess: () => {
       toast({

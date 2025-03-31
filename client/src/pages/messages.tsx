@@ -48,10 +48,7 @@ export default function Messages() {
   // Send a message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ toUserId, content, itemId }: { toUserId: number, content: string, itemId?: number }) => {
-      return apiRequest("/api/messages", {
-        method: "POST",
-        body: JSON.stringify({ toUserId, content, itemId })
-      });
+      return apiRequest("POST", "/api/messages", { toUserId, content, itemId });
     },
     onSuccess: () => {
       // Invalidate and refetch the conversation

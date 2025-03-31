@@ -8,16 +8,11 @@ async function throwIfResNotOk(res: Response) {
 }
 
 export async function apiRequest(
+  method: string,
   url: string,
-  options?: {
-    method?: string;
-    body?: any;
-    headers?: Record<string, string>;
-  }
+  body?: any,
+  headers?: Record<string, string>
 ): Promise<any> {
-  const method = options?.method || 'GET';
-  const body = options?.body;
-  
   // Add current user ID from localStorage if it exists
   const userId = localStorage.getItem('userId');
   const defaultHeaders: Record<string, string> = {};
@@ -26,18 +21,20 @@ export async function apiRequest(
     defaultHeaders['user-id'] = userId;
   }
   
-  // Content-Type headers for JSON body
-  if (body && typeof body === 'string') {
+  // Add Content-Type for JSON bodies
+  if (body && !(body instanceof FormData)) {
     defaultHeaders['Content-Type'] = 'application/json';
   }
+  
+  const requestBody = body instanceof FormData ? body : body ? JSON.stringify(body) : undefined;
   
   const res = await fetch(url, {
     method,
     headers: {
       ...defaultHeaders,
-      ...(options?.headers || {})
+      ...(headers || {})
     },
-    body: body,
+    body: requestBody,
     credentials: "include",
   });
 

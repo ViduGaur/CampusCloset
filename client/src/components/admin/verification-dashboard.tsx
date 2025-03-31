@@ -27,9 +27,9 @@ export function VerificationDashboard() {
   // Handle approve verification request
   const approveMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: number, notes?: string }) => {
-      return apiRequest(`/api/admin/verification/${id}/review`, {
-        method: "POST",
-        body: JSON.stringify({ action: "approve", notes }),
+      return apiRequest("POST", `/api/admin/verification/${id}/review`, { 
+        action: "approve", 
+        notes 
       });
     },
     onSuccess: () => {
@@ -53,9 +53,9 @@ export function VerificationDashboard() {
   // Handle reject verification request
   const rejectMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: number, notes?: string }) => {
-      return apiRequest(`/api/admin/verification/${id}/review`, {
-        method: "POST",
-        body: JSON.stringify({ action: "reject", notes }),
+      return apiRequest("POST", `/api/admin/verification/${id}/review`, {
+        action: "reject", 
+        notes
       });
     },
     onSuccess: () => {

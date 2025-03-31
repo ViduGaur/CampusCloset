@@ -67,8 +67,8 @@ export function RegistrationForm() {
       // Extract confirmPassword so it doesn't get sent to the API
       const { confirmPassword, ...userData } = values;
       
-      const res = await apiRequest("POST", "/api/register", userData);
-      const user = await res.json();
+      // Use the updated apiRequest function signature
+      const user = await apiRequest("POST", "/api/register", userData);
       
       // Log the user in
       login(user);
