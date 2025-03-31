@@ -20,6 +20,7 @@ import { RatingForm } from "@/components/ratings/rating-form";
 export default function Profile() {
   const { user } = useAuth();
   const [, params] = useLocation();
+  const [, setLocation] = useLocation();
   const [searchParams] = useSearch();
   const { toast } = useToast();
   const [profileUserId, setProfileUserId] = useState<number | null>(null);
