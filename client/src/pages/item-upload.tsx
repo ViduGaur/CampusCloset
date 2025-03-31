@@ -311,7 +311,7 @@ export default function ItemUpload() {
                           <FormLabel>Category <span className="text-destructive">*</span></FormLabel>
                           <Select 
                             onValueChange={(value) => field.onChange(parseInt(value))}
-                            value={field.value.toString()}
+                            value={field.value ? field.value.toString() : ""}
                           >
                             <FormControl>
                               <SelectTrigger>
