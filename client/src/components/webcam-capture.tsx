@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from "react";
-import Webcam from "react-webcam";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Camera, X, RotateCcw } from "lucide-react";
+import { useCallback, useRef, useState } from 'react';
+import Webcam from 'react-webcam';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Camera, RefreshCw, Upload } from 'lucide-react';
 
 interface WebcamCaptureProps {
   onCapture: (file: File, previewUrl: string) => void;
@@ -20,11 +20,11 @@ export function WebcamCapture({ onCapture, onCancel }: WebcamCaptureProps) {
     }
   }, [webcamRef]);
 
-  const retake = () => {
+  const retake = useCallback(() => {
     setCapturedImage(null);
-  };
+  }, []);
 
-  const saveCapture = () => {
+  const saveCapture = useCallback(() => {
     if (capturedImage) {
       // Convert base64 to blob
       const byteString = atob(capturedImage.split(',')[1]);
@@ -37,62 +37,69 @@ export function WebcamCapture({ onCapture, onCancel }: WebcamCaptureProps) {
       }
       
       const blob = new Blob([ab], { type: mimeString });
-      const file = new File([blob], "captured-image.jpg", { type: "image/jpeg" });
+      const file = new File([blob], "webcam-capture.jpg", { type: "image/jpeg" });
       
       onCapture(file, capturedImage);
     }
-  };
+  }, [capturedImage, onCapture]);
 
   const videoConstraints = {
-    width: 1280,
-    height: 720,
-    facingMode: "user",
+    width: 720,
+    height: 480,
+    facingMode: "user"
   };
 
   return (
-    <Card className="mb-4">
-      <CardContent className="p-4">
+    <Card>
+      <CardContent className="p-6">
         <div className="flex flex-col items-center">
-          {!capturedImage ? (
-            <>
-              <div className="relative w-full max-w-md rounded-lg overflow-hidden mb-4">
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  videoConstraints={videoConstraints}
-                  className="w-full"
-                />
-              </div>
-              <div className="flex space-x-2">
-                <Button onClick={capture} className="flex items-center">
-                  <Camera className="mr-2 h-4 w-4" />
-                  Capture
-                </Button>
-                <Button variant="outline" onClick={onCancel}>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="w-full max-w-md rounded-lg overflow-hidden mb-4">
-                <img
-                  src={capturedImage}
-                  alt="Captured"
-                  className="w-full"
-                />
-              </div>
-              <div className="flex space-x-2">
-                <Button onClick={saveCapture}>Use Photo</Button>
+          <div className="relative w-full max-w-md mx-auto rounded-lg overflow-hidden shadow-sm border">
+            {capturedImage ? (
+              <img 
+                src={capturedImage} 
+                alt="Captured ID" 
+                className="w-full h-auto"
+              />
+            ) : (
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                videoConstraints={videoConstraints}
+                className="w-full"
+              />
+            )}
+          </div>
+          
+          <div className="flex justify-center mt-4 space-x-3">
+            {capturedImage ? (
+              <>
                 <Button variant="outline" onClick={retake}>
-                  <RotateCcw className="mr-2 h-4 w-4" />
+                  <RefreshCw className="mr-2 h-4 w-4" />
                   Retake
                 </Button>
-              </div>
-            </>
-          )}
+                <Button onClick={saveCapture}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Use this photo
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={onCancel}>
+                  Cancel
+                </Button>
+                <Button onClick={capture}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Capture ID
+                </Button>
+              </>
+            )}
+          </div>
+          
+          <div className="mt-4 text-sm text-gray-500 text-center">
+            <p>Position your college ID card clearly in the frame</p>
+            <p>Make sure all details are visible and lighting is good</p>
+          </div>
         </div>
       </CardContent>
     </Card>

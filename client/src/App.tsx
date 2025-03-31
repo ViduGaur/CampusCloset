@@ -8,6 +8,7 @@ import { AuthProvider } from "@/lib/auth-context";
 // Import pages
 import Home from "@/pages/home";
 import Register from "@/pages/register";
+import Login from "@/pages/login";
 import Verification from "@/pages/verification";
 import VerificationPending from "@/pages/verification-pending";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -23,6 +24,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/register" component={Register} />
+      <Route path="/login" component={Login} />
       <Route path="/verification" component={Verification} />
       <Route path="/verification-pending" component={VerificationPending} />
       <Route path="/admin" component={AdminDashboard} />

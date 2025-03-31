@@ -1,16 +1,8 @@
 import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { format } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 interface VerificationModalProps {
   request: any;
@@ -28,93 +20,131 @@ export function VerificationModal({
   onReject,
 }: VerificationModalProps) {
   const [notes, setNotes] = useState("");
-  
-  const { user, idImageData, createdAt } = request;
-  const uploadDate = format(new Date(createdAt), "MMMM d, yyyy 'at' h:mm a");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [action, setAction] = useState<"approve" | "reject" | null>(null);
 
-  const handleApprove = () => {
-    onApprove(notes);
+  const handleAction = async (actionType: "approve" | "reject") => {
+    setIsSubmitting(true);
+    setAction(actionType);
+    
+    try {
+      if (actionType === "approve") {
+        await onApprove(notes || undefined);
+      } else {
+        await onReject(notes || undefined);
+      }
+    } finally {
+      setIsSubmitting(false);
+      setAction(null);
+      setNotes("");
+    }
   };
 
-  const handleReject = () => {
-    onReject(notes);
-  };
+  if (!request) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Verification Request Details</DialogTitle>
+          <DialogTitle>Verification Request</DialogTitle>
           <DialogDescription>
-            Review the student ID details before approving or rejecting.
+            Review this student's ID verification request
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex items-center">
-            <Avatar className="h-12 w-12">
-              <AvatarImage
-                src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.fullName}`}
-                alt={user.fullName}
+        
+        <div className="py-4">
+          {/* Student Info */}
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Student Information</h3>
+              <div className="space-y-2">
+                <p className="text-sm"><span className="font-medium text-gray-700">Full Name:</span> {request.user?.fullName}</p>
+                <p className="text-sm"><span className="font-medium text-gray-700">Username:</span> {request.user?.username}</p>
+                <p className="text-sm"><span className="font-medium text-gray-700">Email:</span> {request.user?.email}</p>
+                <p className="text-sm"><span className="font-medium text-gray-700">Hostel:</span> {request.user?.hostel}</p>
+                <p className="text-sm">
+                  <span className="font-medium text-gray-700">Submitted:</span> {
+                    new Date(request.createdAt).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: 'numeric',
+                    })
+                  }
+                </p>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Verification Notes</h3>
+              <Textarea
+                placeholder="Add notes about this verification (optional)"
+                className="min-h-[100px]"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                disabled={isSubmitting}
               />
-              <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
-              <p className="text-sm text-gray-500">{user.email}</p>
             </div>
           </div>
-
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Student ID</h4>
-            <div className="bg-gray-100 rounded-lg overflow-hidden">
-              <img
-                src={`data:image/jpeg;base64,${idImageData}`}
-                alt="Student ID"
-                className="w-full object-cover h-48"
-              />
+          
+          {/* ID Image */}
+          <div className="border rounded-lg overflow-hidden mb-6">
+            <div className="bg-gray-50 px-4 py-2 border-b">
+              <h3 className="font-medium">Student ID Image</h3>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Uploaded on {uploadDate}</p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <p className="text-sm text-gray-500">Hostel/Dorm</p>
-              <p className="text-sm text-gray-900">{user.hostel}</p>
+            <div className="p-4 flex justify-center">
+              {request.idImageData ? (
+                <img 
+                  src={`data:image/jpeg;base64,${request.idImageData}`} 
+                  alt="Student ID" 
+                  className="max-w-full max-h-[400px] object-contain border"
+                />
+              ) : (
+                <div className="p-8 text-gray-500">No image available</div>
+              )}
             </div>
-            <div className="flex justify-between">
-              <p className="text-sm text-gray-500">Username</p>
-              <p className="text-sm text-gray-900">{user.username}</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Notes (optional)
-            </label>
-            <Textarea
-              placeholder="Add any notes about this verification"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full"
-            />
           </div>
         </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="default"
-            className="bg-green-600 hover:bg-green-700"
-            onClick={handleApprove}
+        
+        <DialogFooter className="flex justify-between sm:justify-between">
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            disabled={isSubmitting}
           >
-            Approve
+            Cancel
           </Button>
-          <Button variant="outline" onClick={handleReject}>
-            Reject
-          </Button>
-          <Button variant="secondary" onClick={onClose}>
-            Close
-          </Button>
+          
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={() => handleAction("reject")}
+              disabled={isSubmitting}
+            >
+              {isSubmitting && action === "reject" ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              Reject Verification
+            </Button>
+            
+            <Button 
+              variant="outline"
+              className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700"
+              onClick={() => handleAction("approve")}
+              disabled={isSubmitting}
+            >
+              {isSubmitting && action === "approve" ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              Approve Verification
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

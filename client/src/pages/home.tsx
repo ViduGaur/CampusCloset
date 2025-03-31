@@ -38,11 +38,11 @@ export default function Home() {
                       Browse Items
                     </Button>
                   </Link>
-                  <Link href={user?.isVerified ? "/upload" : "/verification"}>
+                  <Link href={user?.isVerified ? "/upload-item" : "/verification"}>
                     <Button 
                       variant="outline" 
                       size="lg" 
-                      className="ml-4 px-6 border-white text-white hover:bg-white hover:bg-opacity-10"
+                      className="ml-4 px-6 bg-white text-primary hover:bg-gray-100 border-white"
                     >
                       {user?.isVerified ? "List an Item" : "Get Verified"}
                     </Button>

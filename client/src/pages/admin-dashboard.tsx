@@ -1,107 +1,151 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { Navbar } from "@/components/ui/navbar";
-import { Footer } from "@/components/ui/footer";
 import { useAuth } from "@/lib/auth-context";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VerificationDashboard } from "@/components/admin/verification-dashboard";
-import { Button } from "@/components/ui/button";
-import { Shirt, Users, Settings } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { ShieldCheck, Users, Package } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
   const [, navigate] = useLocation();
-  const { toast } = useToast();
+  const { user } = useAuth();
   
-  // Redirect if not admin
+  // Redirect to homepage if not admin
   useEffect(() => {
-    if (!user) {
-      navigate("/login");
-      toast({
-        title: "Access denied",
-        description: "Please log in first",
-        variant: "destructive",
-      });
-    } else if (!user.isAdmin) {
+    if (user && !user.isAdmin) {
       navigate("/");
-      toast({
-        title: "Access denied",
-        description: "You don't have admin privileges",
-        variant: "destructive",
-      });
     }
-  }, [user, navigate, toast]);
-  
-  if (!user || !user.isAdmin) return null; // Don't render until auth check completes
-  
+  }, [user, navigate]);
+
+  if (!user || !user.isAdmin) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
+    <div className="container py-10 max-w-7xl">
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
+        <p className="text-gray-500">
+          Manage verification requests and system data
+        </p>
+      </div>
       
-      <div className="flex-grow container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row">
-          {/* Admin Sidebar */}
-          <div className="w-full lg:w-64 lg:flex-shrink-0 bg-white p-4 shadow-sm rounded-lg lg:mr-8 mb-6 lg:mb-0">
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Admin Dashboard
-                </h3>
-                <nav className="mt-4 space-y-2">
-                  <Button
-                    variant="default"
-                    className="w-full justify-start"
-                  >
-                    <Shirt className="mr-3 h-4 w-4" />
-                    <span>Verification Requests</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                  >
-                    <Users className="mr-3 h-4 w-4 text-gray-400" />
-                    <span>Users</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                  >
-                    <Shirt className="mr-3 h-4 w-4 text-gray-400" />
-                    <span>Items</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                  >
-                    <Settings className="mr-3 h-4 w-4 text-gray-400" />
-                    <span>Settings</span>
-                  </Button>
-                </nav>
+      {/* Overview Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <ShieldCheck className="h-5 w-5 text-primary" />
               </div>
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Statistics
-                </h3>
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-gray-500">Pending</p>
-                    <p className="text-lg font-semibold">-</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-gray-500">Today</p>
-                    <p className="text-lg font-semibold">-</p>
-                  </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Pending Verifications</p>
+                <h3 className="text-2xl font-bold">2</h3>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Users</p>
+                <h3 className="text-2xl font-bold">12</h3>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Active Listings</p>
+                <h3 className="text-2xl font-bold">8</h3>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Verification Management */}
+      <Card className="mb-10">
+        <CardHeader>
+          <CardTitle>Verification Management</CardTitle>
+          <CardDescription>
+            Review and manage student ID verification requests
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="pending" className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="completed">Completed</TabsTrigger>
+            </TabsList>
+            
+            <VerificationDashboard />
+          </Tabs>
+        </CardContent>
+      </Card>
+      
+      {/* System Management (mock-up for future implementation) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>System Management</CardTitle>
+          <CardDescription>
+            Manage categories, users, and system settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-medium mb-2">Categories</h3>
+              <p className="text-sm text-gray-500 mb-4">Manage item categories in the system</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-3 border rounded-md text-sm">Ethnic Wear</div>
+                <div className="p-3 border rounded-md text-sm">Formal Wear</div>
+                <div className="p-3 border rounded-md text-sm">Casual Wear</div>
+                <div className="p-3 border rounded-md text-sm">Accessories</div>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            <div>
+              <h3 className="font-medium mb-2">User Management</h3>
+              <p className="text-sm text-gray-500 mb-4">View and manage user accounts</p>
+              <div className="border rounded-md overflow-hidden">
+                <div className="p-3 bg-gray-50 border-b grid grid-cols-4 text-sm font-medium">
+                  <div>Username</div>
+                  <div>Email</div>
+                  <div>Hostel</div>
+                  <div>Status</div>
+                </div>
+                <div className="p-3 border-b grid grid-cols-4 text-sm">
+                  <div>john_doe</div>
+                  <div className="truncate">john.doe@example.com</div>
+                  <div>HB4</div>
+                  <div><span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Verified</span></div>
+                </div>
+                <div className="p-3 border-b grid grid-cols-4 text-sm">
+                  <div>sara_smith</div>
+                  <div className="truncate">sara.smith@example.com</div>
+                  <div>HB1</div>
+                  <div><span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs">Pending</span></div>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Content Area */}
-          <VerificationDashboard />
-        </div>
-      </div>
-      
-      <Footer />
+        </CardContent>
+      </Card>
     </div>
   );
 }

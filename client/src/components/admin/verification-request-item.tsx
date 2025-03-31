@@ -1,7 +1,7 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, X, Eye } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { CheckCircle, XCircle, Eye } from "lucide-react";
 
 interface VerificationRequestItemProps {
   request: any;
@@ -16,60 +16,93 @@ export function VerificationRequestItem({
   onReject,
   onView,
 }: VerificationRequestItemProps) {
-  const { user, createdAt } = request;
-  
-  // Format the created time
-  const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    }).format(date);
+  };
 
   return (
-    <li>
-      <div className="px-6 py-4 flex items-center">
-        <div className="flex-shrink-0 h-12 w-12">
-          <Avatar className="h-12 w-12">
-            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.fullName}`} alt={user.fullName} />
-            <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
-          </Avatar>
-        </div>
-        <div className="ml-4 flex-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
-            <p className="text-sm text-gray-500">Applied {timeAgo}</p>
+    <Card className="mb-4 overflow-hidden">
+      <CardContent className="pt-6">
+        <div className="grid md:grid-cols-5 gap-4">
+          {/* User info */}
+          <div className="col-span-3">
+            <h3 className="text-lg font-medium flex items-center">
+              {request.user.fullName}
+              <Badge 
+                variant="outline" 
+                className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200"
+              >
+                Pending
+              </Badge>
+            </h3>
+            <div className="space-y-1 mt-2">
+              <p className="text-sm text-gray-500">
+                <span className="font-medium">Username:</span> {request.user.username}
+              </p>
+              <p className="text-sm text-gray-500">
+                <span className="font-medium">Email:</span> {request.user.email}
+              </p>
+              <p className="text-sm text-gray-500">
+                <span className="font-medium">Hostel:</span> {request.user.hostel}
+              </p>
+              <p className="text-sm text-gray-500">
+                <span className="font-medium">Submitted:</span> {formatDate(request.createdAt)}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center text-sm text-gray-500">
-            <span>{user.hostel}</span>
-            <span className="mx-1">•</span>
-            <span>{user.email}</span>
+          
+          {/* ID preview (small thumbnail) */}
+          <div className="col-span-2">
+            <div 
+              className="relative w-full h-40 rounded-md bg-gray-100 flex items-center justify-center cursor-pointer group overflow-hidden"
+              onClick={onView}
+            >
+              {request.idImageData ? (
+                <>
+                  <img 
+                    src={`data:image/jpeg;base64,${request.idImageData}`} 
+                    alt="ID preview" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Eye className="h-8 w-8 text-white" />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">No image</p>
+              )}
+            </div>
           </div>
         </div>
-        <div className="ml-4 flex-shrink-0 flex">
-          <Button
-            variant="default"
-            size="sm"
-            className="bg-green-600 hover:bg-green-700"
-            onClick={onApprove}
-          >
-            <Check className="h-4 w-4 mr-1" />
-            Approve
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-2"
-            onClick={onReject}
-          >
-            <X className="h-4 w-4 mr-1" />
-            Reject
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="ml-2 h-8 w-8"
-            onClick={onView}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </li>
+      </CardContent>
+      
+      <CardFooter className="flex justify-end space-x-2 bg-gray-50 border-t">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+          onClick={onReject}
+        >
+          <XCircle className="h-4 w-4 mr-1" />
+          Reject
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+          onClick={onApprove}
+        >
+          <CheckCircle className="h-4 w-4 mr-1" />
+          Approve
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
