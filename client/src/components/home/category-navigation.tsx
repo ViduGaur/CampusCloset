@@ -14,7 +14,7 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 export function CategoryNavigation() {
-  const { data: categories = [], isLoading } = useQuery({
+  const { data: categories, isLoading } = useQuery<any[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -28,7 +28,7 @@ export function CategoryNavigation() {
     { id: 6, name: "More", icon: "more", bgColor: "bg-gray-100", textColor: "text-gray-600" },
   ];
 
-  const displayCategories = categories || defaultCategories;
+  const displayCategories = (categories && categories.length > 0) ? categories : defaultCategories;
 
   return (
     <div className="bg-white rounded-lg shadow-sm">

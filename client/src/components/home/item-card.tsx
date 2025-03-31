@@ -38,7 +38,9 @@ export function ItemCard({ item }: ItemCardProps) {
         <div className="w-full bg-gray-200 rounded-md overflow-hidden group-hover:opacity-75">
           <AspectRatio ratio={1 / 1}>
             <img
-              src={`data:image/jpeg;base64,${item.imageData}`}
+              src={item.imageData.startsWith('data:') 
+                ? item.imageData 
+                : `data:image/jpeg;base64,${item.imageData}`}
               alt={item.name}
               className="w-full h-full object-center object-cover"
             />

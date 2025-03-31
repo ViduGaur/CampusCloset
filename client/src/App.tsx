@@ -13,6 +13,7 @@ import VerificationPending from "@/pages/verification-pending";
 import AdminDashboard from "@/pages/admin-dashboard";
 import ItemUpload from "@/pages/item-upload";
 import Profile from "@/pages/profile";
+import ItemDetail from "@/pages/item-detail";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/upload" component={ItemUpload} />
       <Route path="/profile/:id" component={Profile} />
+      <Route path="/items/:id" component={ItemDetail} />
       <Route component={NotFound} />
     </Switch>
   );

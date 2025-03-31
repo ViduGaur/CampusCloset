@@ -135,6 +135,71 @@ export class MemStorage implements IStorage {
         parentId: subcategory.parentId
       });
     });
+    
+    // Create a demo user
+    this.createUser({
+      username: "demo_user",
+      password: "password123",
+      email: "demo@example.com", 
+      fullName: "Demo User",
+      hostel: "North Campus"
+    }).then(user => {
+      this.updateUser(user.id, {
+        isVerified: true,
+        isAdmin: false
+      });
+      
+      // Create sample items for demo user
+      this.createItem({
+        name: "Navy Blue Blazer",
+        description: "Formal navy blue blazer, perfect for interviews and formal events. Barely used, in excellent condition.",
+        size: "Medium",
+        pricePerDay: 120,
+        categoryId: 4, // Formal
+        ownerId: user.id,
+        imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzFhMzY1ZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0id2hpdGUiPk5hdnkgQmx1ZSBCbGF6ZXI8L3RleHQ+PC9zdmc+"
+      });
+      
+      this.createItem({
+        name: "Designer Denim Jeans",
+        description: "Stylish designer jeans, slim fit. Comfortable for everyday wear. Rented once before.",
+        size: "32 waist",
+        pricePerDay: 80,
+        categoryId: 5, // Casual
+        ownerId: user.id,
+        imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzEwNGU4YiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0id2hpdGUiPkRlc2lnbmVyIERlbmltPC90ZXh0Pjwvc3ZnPg=="
+      });
+      
+      this.createItem({
+        name: "Traditional Silk Kurta",
+        description: "Hand-embroidered silk kurta, perfect for cultural events. Rich color and design.",
+        size: "Large",
+        pricePerDay: 200,
+        categoryId: 6, // Ethnic
+        ownerId: user.id,
+        imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2IyMDAyZiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0id2hpdGUiPlNpbGsgS3VydGE8L3RleHQ+PC9zdmc+"
+      });
+      
+      this.createItem({
+        name: "Silver Bracelet",
+        description: "Elegant silver bracelet that goes with any outfit. Perfect for special occasions.",
+        size: "One size",
+        pricePerDay: 60,
+        categoryId: 2, // Accessories
+        ownerId: user.id,
+        imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2M0YzRjNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0iIzMzMyI+U2lsdmVyIEJyYWNlbGV0PC90ZXh0Pjwvc3ZnPg=="
+      });
+      
+      this.createItem({
+        name: "Leather Dress Shoes",
+        description: "Brown leather dress shoes, barely worn. Perfect for formal events or interviews.",
+        size: "UK 9",
+        pricePerDay: 100,
+        categoryId: 3, // Footwear
+        ownerId: user.id,
+        imageData: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzZkNGMyMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0id2hpdGUiPkxlYXRoZXIgU2hvZXM8L3RleHQ+PC9zdmc+"
+      });
+    });
   }
   
   // User methods
