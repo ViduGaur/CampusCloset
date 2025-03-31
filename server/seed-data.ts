@@ -4,6 +4,25 @@ import { storage } from './storage';
 export async function seedTestData() {
   console.log("Adding test lender-borrower relationship for admin...");
   
+  // Create clothing categories if they don't exist
+  let formalCategory = await storage.getCategoryByName('Formal');
+  if (!formalCategory) {
+    formalCategory = await storage.createCategory({
+      name: 'Formal',
+      icon: 'GraduationCap'
+    });
+    console.log("Created formal category:", formalCategory);
+  }
+  
+  let ethnicCategory = await storage.getCategoryByName('Ethnic');
+  if (!ethnicCategory) {
+    ethnicCategory = await storage.createCategory({
+      name: 'Ethnic',
+      icon: 'LandPlot'
+    });
+    console.log("Created ethnic category:", ethnicCategory);
+  }
+  
   // Create a test user (if it doesn't exist)
   let testUser = await storage.getUserByUsername('testuser');
   if (!testUser) {
@@ -25,11 +44,25 @@ export async function seedTestData() {
     console.log("Created test user:", testUser);
   }
   
-  // Create a test item owned by admin
+  // Create an admin user (if it doesn't exist)
   let adminUser = await storage.getUserByUsername('admin');
   if (!adminUser) {
-    console.error("Admin user not found!");
-    return;
+    adminUser = await storage.createUser({
+      username: 'admin',
+      password: 'admin123',
+      email: 'admin@campus.edu',
+      fullName: 'Admin User',
+      hostel: 'HB1'
+    });
+    
+    // Set admin privileges
+    await storage.updateUser(adminUser.id, {
+      isVerified: true,
+      isAdmin: true,
+      avgRating: 500, // 5.0 out of 5
+      ratingCount: 10
+    });
+    console.log("Created admin user:", adminUser);
   }
   
   // Find an existing admin item or create a new one
@@ -44,7 +77,7 @@ export async function seedTestData() {
       size: 'M',
       pricePerDay: 500, // $5.00 per day
       ownerId: adminUser.id,
-      categoryId: 1, // Clothes category
+      categoryId: formalCategory.id, // Formal category
       imageData: 'https://images.unsplash.com/photo-1562137369-1a1a0bc66744?q=80&w=1000&auto=format&fit=crop'
     });
     
