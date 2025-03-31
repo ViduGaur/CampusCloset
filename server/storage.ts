@@ -50,6 +50,7 @@ export interface IStorage {
   getRating(id: number): Promise<Rating | undefined>;
   createRating(rating: InsertRating): Promise<Rating>;
   getRatingsByUser(userId: number): Promise<Rating[]>;
+  updateUserRating(userId: number): Promise<User | undefined>;
   
   // Message methods
   getMessage(id: number): Promise<Message | undefined>;
@@ -332,7 +333,9 @@ export class MemStorage implements IStorage {
       id,
       isVerified: false,
       isAdmin: false,
-      createdAt: now
+      createdAt: now,
+      avgRating: 0,
+      ratingCount: 0
     };
     this.users.set(id, user);
     return user;
@@ -525,9 +528,14 @@ export class MemStorage implements IStorage {
     const newRating: Rating = {
       ...rating,
       id,
-      createdAt: now
+      createdAt: now,
+      comment: rating.comment || null
     };
     this.ratings.set(id, newRating);
+    
+    // Update the user's average rating
+    await this.updateUserRating(rating.toUserId);
+    
     return newRating;
   }
   
@@ -535,6 +543,32 @@ export class MemStorage implements IStorage {
     return Array.from(this.ratings.values()).filter(
       (rating) => rating.toUserId === userId
     );
+  }
+  
+  async updateUserRating(userId: number): Promise<User | undefined> {
+    // Get the user
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+    
+    // Get all ratings for this user
+    const ratings = await this.getRatingsByUser(userId);
+    if (ratings.length === 0) {
+      // No ratings, set to default values
+      return this.updateUser(userId, {
+        avgRating: 0,
+        ratingCount: 0
+      });
+    }
+    
+    // Calculate new average rating (store as integer: multiply by 100 to keep 2 decimal places)
+    const ratingSum = ratings.reduce((sum, r) => sum + r.rating, 0);
+    const avgRating = Math.round((ratingSum / ratings.length) * 100);
+    
+    // Update the user's rating info
+    return this.updateUser(userId, {
+      avgRating,
+      ratingCount: ratings.length
+    });
   }
   
   // Message methods
@@ -549,7 +583,8 @@ export class MemStorage implements IStorage {
       ...message,
       id,
       isRead: false,
-      createdAt: now
+      createdAt: now,
+      itemId: message.itemId || null
     };
     this.messages.set(id, newMessage);
     return newMessage;

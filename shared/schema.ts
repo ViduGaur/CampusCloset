@@ -13,6 +13,9 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").notNull().default(false),
   isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Trust score will be calculated from average rating
+  avgRating: integer("avg_rating").default(0), // 0-500 (0-5 stars with 2 decimal places, multiplied by 100)
+  ratingCount: integer("rating_count").default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -20,6 +23,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
   isVerified: true,
   isAdmin: true,
   createdAt: true,
+  avgRating: true,
+  ratingCount: true,
 });
 
 // Verification request model

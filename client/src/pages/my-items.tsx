@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemCard } from "@/components/home/item-card";
 import { ItemGrid } from "@/components/home/item-grid";
-import { PlusCircle, Package, ShoppingCart } from "lucide-react";
+import { RentedItemCard } from "@/components/ratings/rented-item-card";
+import { PlusCircle, Package, ShoppingCart, Star } from "lucide-react";
 import { getQueryFn } from "@/lib/queryClient";
 
 export default function MyItems() {
@@ -20,18 +21,18 @@ export default function MyItems() {
     enabled: !!user
   });
 
-  // Get approved rental requests where user is the requester
+  // Get rental requests where user is the requester (renting from others)
   const { data: myRentals, isLoading: myRentalsLoading } = useQuery({
-    queryKey: ["/api/rental-requests/requester"],
+    queryKey: ["/api/my-rental-requests"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!user
   });
 
-  // Get items based on rental requests
-  const { data: rentedItems, isLoading: rentedItemsLoading } = useQuery({
-    queryKey: ["/api/items/rented"],
+  // Get rental requests for user's items (lending to others)
+  const { data: lendingRequests, isLoading: lendingRequestsLoading } = useQuery({
+    queryKey: ["/api/my-items/rental-requests"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    enabled: !!user && !!myRentals && myRentals.length > 0
+    enabled: !!user
   });
 
   // Get pending rental requests for user's items
@@ -58,10 +59,11 @@ export default function MyItems() {
     );
   }
 
-  const isLoading = myListingsLoading || myRentalsLoading || rentedItemsLoading || pendingRequestsLoading;
-  const hasMyListings = myListings && myListings.length > 0;
-  const hasRentedItems = rentedItems && rentedItems.length > 0;
-  const hasPendingRequests = pendingRequests && pendingRequests.length > 0;
+  const isLoading = myListingsLoading || myRentalsLoading || lendingRequestsLoading || pendingRequestsLoading;
+  const hasMyListings = myListings && Array.isArray(myListings) && myListings.length > 0;
+  const hasMyRentals = myRentals && Array.isArray(myRentals) && myRentals.length > 0;
+  const hasLendingRequests = lendingRequests && Array.isArray(lendingRequests) && lendingRequests.length > 0;
+  const hasPendingRequests = pendingRequests && Array.isArray(pendingRequests) && pendingRequests.length > 0;
 
   return (
     <div className="container py-8">
@@ -82,13 +84,17 @@ export default function MyItems() {
             My Listings
             {hasPendingRequests && (
               <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                {pendingRequests.length}
+                {Array.isArray(pendingRequests) ? pendingRequests.length : 0}
               </span>
             )}
           </TabsTrigger>
           <TabsTrigger value="rented-items" className="flex items-center">
             <ShoppingCart className="mr-2 h-4 w-4" />
-            Items I'm Renting
+            Rentals
+          </TabsTrigger>
+          <TabsTrigger value="lending-items" className="flex items-center">
+            <Star className="mr-2 h-4 w-4" />
+            Lending
           </TabsTrigger>
         </TabsList>
         
@@ -101,7 +107,8 @@ export default function MyItems() {
                 <div className="bg-yellow-50 p-4 rounded-md mb-6">
                   <h3 className="font-medium text-yellow-800 mb-2">Pending Rental Requests</h3>
                   <p className="text-yellow-700 mb-2">
-                    You have {pendingRequests.length} pending rental request{pendingRequests.length !== 1 ? 's' : ''}.
+                    You have {Array.isArray(pendingRequests) ? pendingRequests.length : 0} pending rental 
+                    request{Array.isArray(pendingRequests) && pendingRequests.length !== 1 ? 's' : ''}.
                   </p>
                   <Link href="/requests">
                     <Button variant="outline" size="sm">View Requests</Button>
@@ -134,11 +141,11 @@ export default function MyItems() {
         
         <TabsContent value="rented-items" className="space-y-4">
           {isLoading ? (
-            <div className="text-center py-8">Loading your rented items...</div>
-          ) : hasRentedItems ? (
+            <div className="text-center py-8">Loading your rentals...</div>
+          ) : hasMyRentals ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {rentedItems.map((item: any) => (
-                <ItemCard key={item.id} item={item} />
+              {myRentals.map((rental: any) => (
+                <RentedItemCard key={rental.id} rental={rental} type="rented" />
               ))}
             </div>
           ) : (
@@ -153,6 +160,26 @@ export default function MyItems() {
                   Browse Items
                 </Button>
               </Link>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="lending-items" className="space-y-4">
+          {isLoading ? (
+            <div className="text-center py-8">Loading lending requests...</div>
+          ) : hasLendingRequests ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {lendingRequests.map((rental: any) => (
+                <RentedItemCard key={rental.id} rental={rental} type="lending" />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+              <Star className="h-10 w-10 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No active lending items</h3>
+              <p className="text-gray-500 mb-4">
+                You have no items currently being rented by others.
+              </p>
             </div>
           )}
         </TabsContent>

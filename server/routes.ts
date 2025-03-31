@@ -569,6 +569,298 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'An error occurred while getting rental requests for my items' });
     }
   });
+  
+  // Update rental request status (mark as complete)
+  app.patch('/api/rental-requests/:id/status', requireAuth, requireVerified, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      if (isNaN(requestId)) {
+        return res.status(400).json({ message: 'Invalid request ID' });
+      }
+      
+      const { status } = req.body;
+      if (!status || !['completed'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status. Only "completed" is allowed for this endpoint.' });
+      }
+      
+      // Get the rental request
+      const rentalRequest = await storage.getRentalRequest(requestId);
+      if (!rentalRequest) {
+        return res.status(404).json({ message: 'Rental request not found' });
+      }
+      
+      // Only approved requests can be marked as completed
+      if (rentalRequest.status !== 'approved') {
+        return res.status(400).json({ message: 'Only approved rentals can be marked as completed' });
+      }
+      
+      // Get the item
+      const item = await storage.getItem(rentalRequest.itemId);
+      if (!item) {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      
+      // Verify user is authorized to update this request
+      const isOwner = item.ownerId === req.user.id;
+      const isRequester = rentalRequest.requesterId === req.user.id;
+      
+      if (!isOwner && !isRequester) {
+        return res.status(403).json({ message: 'Only parties involved in the rental can mark it as completed' });
+      }
+      
+      // Update the request status
+      const updatedRequest = await storage.updateRentalRequest(requestId, { status });
+      
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error('Error updating rental request status:', error);
+      res.status(500).json({ message: 'An error occurred while updating rental request' });
+    }
+  });
+
+  // Get my rental requests (where I am the requester)
+  app.get('/api/my-rental-requests', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const rentalRequests = await storage.getRentalRequestsByRequester(userId);
+      
+      // Get details for each request
+      const requestsWithDetails = await Promise.all(
+        rentalRequests.map(async (request) => {
+          const item = await storage.getItem(request.itemId);
+          const owner = await storage.getUser(request.ownerId);
+          return {
+            ...request,
+            item,
+            owner: owner ? {
+              id: owner.id,
+              username: owner.username,
+              fullName: owner.fullName,
+              hostel: owner.hostel,
+              isVerified: owner.isVerified,
+              averageRating: owner.averageRating,
+              ratingCount: owner.ratingCount,
+            } : null,
+          };
+        })
+      );
+      
+      res.status(200).json(requestsWithDetails);
+    } catch (error) {
+      console.error('Error getting user\'s rental requests:', error);
+      res.status(500).json({ message: 'An error occurred while getting rental requests' });
+    }
+  });
+
+  // Get rental requests for my items (where I am the owner)
+  app.get('/api/my-items/rental-requests', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const rentalRequests = await storage.getRentalRequestsByOwner(userId);
+      
+      // Filter for approved or completed requests
+      const activeRequests = rentalRequests.filter(request => 
+        request.status === "approved" || request.status === "completed");
+      
+      // Get details for each request
+      const requestsWithDetails = await Promise.all(
+        activeRequests.map(async (request) => {
+          const item = await storage.getItem(request.itemId);
+          const requester = await storage.getUser(request.requesterId);
+          return {
+            ...request,
+            item,
+            requester: requester ? {
+              id: requester.id,
+              username: requester.username,
+              fullName: requester.fullName,
+              hostel: requester.hostel,
+              isVerified: requester.isVerified,
+              averageRating: requester.averageRating,
+              ratingCount: requester.ratingCount,
+            } : null,
+          };
+        })
+      );
+      
+      res.status(200).json(requestsWithDetails);
+    } catch (error) {
+      console.error('Error getting owner\'s rental requests:', error);
+      res.status(500).json({ message: 'An error occurred while getting rental requests' });
+    }
+  });
+
+  // Mark a rental request as completed
+  app.patch('/api/rental-requests/:id/complete', requireAuth, async (req, res) => {
+    try {
+      const rentalRequestId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      const rentalRequest = await storage.getRentalRequest(rentalRequestId);
+      if (!rentalRequest) {
+        return res.status(404).json({ message: 'Rental request not found' });
+      }
+      
+      // Only the requester or owner can mark as completed
+      if (rentalRequest.requesterId !== userId && rentalRequest.ownerId !== userId) {
+        return res.status(403).json({ message: 'Unauthorized to update this rental request' });
+      }
+      
+      // Only approved requests can be marked as completed
+      if (rentalRequest.status !== "approved") {
+        return res.status(400).json({ message: 'Only approved requests can be marked as completed' });
+      }
+      
+      const updatedRequest = await storage.updateRentalRequest(rentalRequestId, {
+        status: "completed",
+        updatedAt: new Date().toISOString(),
+      });
+      
+      res.status(200).json(updatedRequest);
+    } catch (error) {
+      console.error('Error completing rental request:', error);
+      res.status(500).json({ message: 'An error occurred while completing rental request' });
+    }
+  });
+
+  // Rating routes
+  
+  // Get user's ratings
+  app.get('/api/users/:userId/ratings', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Get user ratings
+      const ratings = await storage.getRatingsByUser(userId);
+      
+      // Return ratings with user info
+      const ratingsWithUserInfo = await Promise.all(
+        ratings.map(async (rating) => {
+          const fromUser = await storage.getUser(rating.fromUserId);
+          return {
+            ...rating,
+            fromUser: fromUser ? {
+              id: fromUser.id,
+              username: fromUser.username,
+              fullName: fromUser.fullName,
+              hostel: fromUser.hostel
+            } : null
+          };
+        })
+      );
+      
+      res.json(ratingsWithUserInfo);
+    } catch (error) {
+      console.error('Error getting user ratings:', error);
+      res.status(500).json({ message: 'An error occurred while fetching ratings' });
+    }
+  });
+  
+  // Submit a rating for a user based on a completed rental
+  app.post('/api/ratings', requireAuth, validateRequest(insertRatingSchema), async (req, res) => {
+    try {
+      const { toUserId, rentalRequestId, rating, comment } = req.body;
+      
+      // Check if the rental request exists and is completed
+      const rentalRequest = await storage.getRentalRequest(rentalRequestId);
+      if (!rentalRequest) {
+        return res.status(404).json({ message: 'Rental request not found' });
+      }
+      
+      // Only allow rating if the rental is completed
+      if (rentalRequest.status !== 'completed') {
+        return res.status(400).json({ message: 'Rental must be completed before rating' });
+      }
+      
+      // Check if the user is a party to this rental (either requester or owner)
+      const item = await storage.getItem(rentalRequest.itemId);
+      if (!item) {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      
+      const isRequester = rentalRequest.requesterId === req.user.id;
+      const isOwner = item.ownerId === req.user.id;
+      
+      if (!isRequester && !isOwner) {
+        return res.status(403).json({ message: 'You are not authorized to rate this rental' });
+      }
+      
+      // Users can only rate the other party
+      if ((isRequester && toUserId !== item.ownerId) || 
+          (isOwner && toUserId !== rentalRequest.requesterId)) {
+        return res.status(400).json({ message: 'You can only rate the other party in the rental' });
+      }
+      
+      // Check if user has already rated this rental
+      const existingRatings = await storage.getRatingsByUser(toUserId);
+      const alreadyRated = existingRatings.some(r => 
+        r.rentalRequestId === rentalRequestId && r.fromUserId === req.user.id
+      );
+      
+      if (alreadyRated) {
+        return res.status(400).json({ message: 'You have already rated this rental' });
+      }
+      
+      // Create rating
+      const newRating = await storage.createRating({
+        fromUserId: req.user.id,
+        toUserId,
+        rentalRequestId,
+        rating,
+        comment
+      });
+      
+      res.status(201).json(newRating);
+    } catch (error) {
+      console.error('Error creating rating:', error);
+      res.status(500).json({ message: 'An error occurred while creating rating' });
+    }
+  });
+  
+  // Get info about a user with their rating info
+  app.get('/api/users/:userId/profile', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      
+      // Get user info
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Get user's items
+      const items = await storage.getItemsByOwner(userId);
+      
+      // Format user data for public view (remove sensitive info)
+      const publicUser = {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        hostel: user.hostel,
+        isVerified: user.isVerified,
+        avgRating: user.avgRating / 100, // Convert from integer (0-500) to decimal (0-5)
+        ratingCount: user.ratingCount,
+        itemCount: items.length
+      };
+      
+      res.json(publicUser);
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      res.status(500).json({ message: 'An error occurred while fetching user profile' });
+    }
+  });
 
   return httpServer;
 }
