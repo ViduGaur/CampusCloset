@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -17,6 +18,8 @@ export const users = pgTable("users", {
   avgRating: integer("avg_rating").default(0), // 0-500 (0-5 stars with 2 decimal places, multiplied by 100)
   ratingCount: integer("rating_count").default(0),
 });
+
+// User relations will be defined after all tables are declared to avoid circular dependencies
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -39,6 +42,19 @@ export const verificationRequests = pgTable("verification_requests", {
   notes: text("notes"),
 });
 
+export const verificationRequestsRelations = relations(verificationRequests, ({ one }) => {
+  return {
+    user: one(users, {
+      fields: [verificationRequests.userId],
+      references: [users.id],
+    }),
+    reviewer: one(users, {
+      fields: [verificationRequests.reviewedBy],
+      references: [users.id],
+    }),
+  };
+});
+
 export const insertVerificationRequestSchema = createInsertSchema(verificationRequests).omit({
   id: true,
   status: true,
@@ -52,8 +68,19 @@ export const insertVerificationRequestSchema = createInsertSchema(verificationRe
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
-  parentId: integer("parent_id").references(() => categories.id),
+  parentId: integer("parent_id"),
   icon: text("icon").notNull().default("tshirt"),
+});
+
+export const categoriesRelations = relations(categories, ({ one, many }) => {
+  return {
+    parent: one(categories, {
+      fields: [categories.parentId],
+      references: [categories.id],
+    }),
+    children: many(categories),
+    items: many(items),
+  };
 });
 
 export const insertCategorySchema = createInsertSchema(categories).omit({
@@ -74,6 +101,21 @@ export const items = pgTable("items", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const itemsRelations = relations(items, ({ one, many }) => {
+  return {
+    owner: one(users, {
+      fields: [items.ownerId],
+      references: [users.id],
+    }),
+    category: one(categories, {
+      fields: [items.categoryId],
+      references: [categories.id],
+    }),
+    rentalRequests: many(rentalRequests),
+    messages: many(messages),
+  };
+});
+
 export const insertItemSchema = createInsertSchema(items).omit({
   id: true,
   isAvailable: true,
@@ -90,6 +132,20 @@ export const rentalRequests = pgTable("rental_requests", {
   status: text("status").notNull().default("pending"), // pending, approved, rejected, completed
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const rentalRequestsRelations = relations(rentalRequests, ({ one, many }) => {
+  return {
+    item: one(items, {
+      fields: [rentalRequests.itemId],
+      references: [items.id],
+    }),
+    requester: one(users, {
+      fields: [rentalRequests.requesterId],
+      references: [users.id],
+    }),
+    ratings: many(ratings),
+  };
 });
 
 export const insertRentalRequestSchema = createInsertSchema(rentalRequests).omit({
@@ -110,6 +166,25 @@ export const ratings = pgTable("ratings", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const ratingsRelations = relations(ratings, ({ one }) => {
+  return {
+    fromUser: one(users, {
+      fields: [ratings.fromUserId],
+      references: [users.id],
+      relationName: "rater",
+    }),
+    toUser: one(users, {
+      fields: [ratings.toUserId],
+      references: [users.id],
+      relationName: "rated",
+    }),
+    rentalRequest: one(rentalRequests, {
+      fields: [ratings.rentalRequestId],
+      references: [rentalRequests.id],
+    }),
+  };
+});
+
 export const insertRatingSchema = createInsertSchema(ratings).omit({
   id: true,
   createdAt: true,
@@ -124,6 +199,25 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const messagesRelations = relations(messages, ({ one }) => {
+  return {
+    sender: one(users, {
+      fields: [messages.fromUserId],
+      references: [users.id],
+      relationName: "sender",
+    }),
+    recipient: one(users, {
+      fields: [messages.toUserId],
+      references: [users.id],
+      relationName: "recipient",
+    }),
+    item: one(items, {
+      fields: [messages.itemId],
+      references: [items.id],
+    }),
+  };
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
@@ -153,3 +247,15 @@ export type InsertRating = z.infer<typeof insertRatingSchema>;
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// Define relations after all tables are defined to avoid circular dependencies
+export const usersRelations = relations(users, ({ many }) => {
+  return {
+    items: many(items),
+    sentMessages: many(messages, { relationName: "sender" }),
+    receivedMessages: many(messages, { relationName: "recipient" }),
+    verificationRequests: many(verificationRequests),
+    givenRatings: many(ratings, { relationName: "rater" }),
+    receivedRatings: many(ratings, { relationName: "rated" }),
+  };
+});

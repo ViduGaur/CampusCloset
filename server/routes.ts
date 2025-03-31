@@ -628,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestsWithDetails = await Promise.all(
         rentalRequests.map(async (request) => {
           const item = await storage.getItem(request.itemId);
-          const owner = await storage.getUser(request.ownerId);
+          const owner = item ? await storage.getUser(item.ownerId) : null;
           return {
             ...request,
             item,
@@ -638,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               fullName: owner.fullName,
               hostel: owner.hostel,
               isVerified: owner.isVerified,
-              averageRating: owner.averageRating,
+              averageRating: owner.avgRating,
               ratingCount: owner.ratingCount,
             } : null,
           };
@@ -676,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               fullName: requester.fullName,
               hostel: requester.hostel,
               isVerified: requester.isVerified,
-              averageRating: requester.averageRating,
+              averageRating: requester.avgRating,
               ratingCount: requester.ratingCount,
             } : null,
           };
@@ -719,7 +719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedRequest = await storage.updateRentalRequest(rentalRequestId, {
         status: "completed",
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       });
       
       res.status(200).json(updatedRequest);
@@ -856,7 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fullName: user.fullName,
         hostel: user.hostel,
         isVerified: user.isVerified,
-        avgRating: user.avgRating / 100, // Convert from integer (0-500) to decimal (0-5)
+        avgRating: (user.avgRating || 0) / 100, // Convert from integer (0-500) to decimal (0-5)
         ratingCount: user.ratingCount,
         itemCount: items.length
       };
