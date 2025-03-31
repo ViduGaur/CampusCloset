@@ -127,10 +127,11 @@ export function RentedItemCard({ rental, type }: RentedItemCardProps) {
             </CompleteRentalDialog>
           )}
           
-          {rental.status === "completed" && !rental.userHasRated && (
+          {/* Allow lenders to rate borrowers when rental is completed */}
+          {isLending && rental.status === "completed" && !rental.userHasRated && (
             <Link href={`/profile/${otherPartyId}?rate=true&rental=${rental.id}`}>
               <Button variant="outline" size="sm">
-                Rate User
+                Rate Borrower
               </Button>
             </Link>
           )}
@@ -139,6 +140,14 @@ export function RentedItemCard({ rental, type }: RentedItemCardProps) {
             <Link href={`/profile/${otherPartyId}`}>
               <Button variant="outline" size="sm">
                 View Profile
+              </Button>
+            </Link>
+          )}
+          
+          {isRented && rental.status === "completed" && (
+            <Link href={`/profile/${otherPartyId}`}>
+              <Button variant="outline" size="sm">
+                View Lender
               </Button>
             </Link>
           )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/ui/navbar";
 import { Footer } from "@/components/ui/footer";
@@ -15,12 +15,19 @@ import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
+import { RatingForm } from "@/components/ratings/rating-form";
 
 export default function Profile() {
   const { user } = useAuth();
   const [, params] = useLocation();
+  const [searchParams] = useSearch();
   const { toast } = useToast();
   const [profileUserId, setProfileUserId] = useState<number | null>(null);
+  
+  // Check if we need to show the rating form
+  const queryParams = new URLSearchParams(searchParams);
+  const showRatingForm = queryParams.get('rate') === 'true';
+  const rentalId = queryParams.get('rental') ? parseInt(queryParams.get('rental')!) : null;
   
   // Check if we're viewing someone else's profile or our own
   useEffect(() => {
@@ -78,6 +85,13 @@ export default function Profile() {
       
       <div className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
+          {/* Show rating form if needed */}
+          {showRatingForm && rentalId && profileUserId && user && !isOwnProfile && (
+            <div className="mb-8">
+              <RatingForm userId={profileUserId} rentalId={rentalId} />
+            </div>
+          )}
+          
           {isProfileLoading ? (
             <div className="flex flex-col md:flex-row gap-6">
               <Skeleton className="h-32 w-32 rounded-full" />

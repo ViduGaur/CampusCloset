@@ -1,12 +1,9 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -15,137 +12,171 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { apiRequest } from "@/lib/queryClient";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
-// Rating form schema
-const ratingFormSchema = z.object({
+const ratingSchema = z.object({
   rating: z.number().min(1).max(5),
-  comment: z.string().min(1, "Please leave a comment about your experience"),
+  comment: z.string().min(5, "Comment must be at least 5 characters"),
 });
 
-type RatingFormValues = z.infer<typeof ratingFormSchema>;
+type RatingFormValues = z.infer<typeof ratingSchema>;
 
 interface RatingFormProps {
-  toUserId: number;
-  rentalRequestId: number;
-  onSuccess?: () => void;
-  onCancel?: () => void;
+  userId: number;
+  rentalId: number;
 }
 
-export function RatingForm({ toUserId, rentalRequestId, onSuccess, onCancel }: RatingFormProps) {
-  const [selectedRating, setSelectedRating] = useState<number>(0);
-  const [hoverRating, setHoverRating] = useState<number>(0);
+export function RatingForm({ userId, rentalId }: RatingFormProps) {
+  const [_, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RatingFormValues>({
-    resolver: zodResolver(ratingFormSchema),
+  
+  const form = useForm<RatingFormValues>({
+    resolver: zodResolver(ratingSchema),
     defaultValues: {
-      rating: 0,
+      rating: 5,
       comment: "",
     },
   });
-
-  const ratingMutation = useMutation({
-    mutationFn: async (data: RatingFormValues) => {
-      return await apiRequest("POST", "/api/ratings", {
-        ...data,
-        toUserId,
-        rentalRequestId,
+  
+  const mutation = useMutation({
+    mutationFn: (data: RatingFormValues) => {
+      return apiRequest("POST", "/api/ratings", {
+        toUserId: userId,
+        rentalRequestId: rentalId,
+        rating: data.rating,
+        comment: data.comment,
       });
     },
     onSuccess: () => {
       toast({
         title: "Rating submitted",
-        description: "Thank you for your feedback!",
+        description: "Your rating has been submitted successfully.",
       });
       
-      // Invalidate relevant queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${toUserId}/ratings`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", toUserId, "profile"] });
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/my-rental-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-items/rental-requests"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/ratings`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/profile`] });
       
-      if (onSuccess) {
-        onSuccess();
-      }
+      // Navigate back to profile
+      setLocation(`/profile/${userId}`);
     },
     onError: (error) => {
       toast({
-        title: "Failed to submit rating",
-        description: error.message || "Please try again later",
+        title: "Error",
+        description: "Failed to submit rating. Please try again.",
         variant: "destructive",
       });
+      console.error("Rating submission error:", error);
     },
   });
   
   const onSubmit = (data: RatingFormValues) => {
-    // Incorporate the selected rating into the form data
-    const formData = {
-      ...data,
-      rating: selectedRating,
-    };
-    
-    ratingMutation.mutate(formData);
+    mutation.mutate(data);
   };
   
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-lg mx-auto">
       <CardHeader>
-        <CardTitle>Rate Your Experience</CardTitle>
+        <CardTitle>Rate Borrower</CardTitle>
         <CardDescription>
-          Share your experience with this user to help others in the community
+          Rate how well the borrower took care of your item.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-center pt-2 pb-6">
-              {[1, 2, 3, 4, 5].map((rating) => (
-                <Star
-                  key={rating}
-                  className={`h-8 w-8 cursor-pointer mx-1 transition-colors ${
-                    (hoverRating || selectedRating) >= rating
-                      ? "text-yellow-400 fill-yellow-400"
-                      : "text-gray-300"
-                  }`}
-                  onClick={() => setSelectedRating(rating)}
-                  onMouseEnter={() => setHoverRating(rating)}
-                  onMouseLeave={() => setHoverRating(0)}
-                />
-              ))}
-            </div>
-            {selectedRating === 0 && (
-              <p className="text-sm text-red-500 text-center">
-                Please select a rating
-              </p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Textarea
-              placeholder="Share details of your experience..."
-              {...register("comment")}
-              className={errors.comment ? "border-red-500" : ""}
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="rating"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rating (1-5)</FormLabel>
+                  <FormControl>
+                    <div className="space-y-3">
+                      <Slider
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={[field.value]}
+                        onValueChange={(value) => field.onChange(value[0])}
+                      />
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Poor (1)</span>
+                        <span>Fair (2)</span>
+                        <span>Good (3)</span>
+                        <span>Great (4)</span>
+                        <span>Excellent (5)</span>
+                      </div>
+                      <div className="text-center text-2xl font-bold mt-2">
+                        {field.value} / 5
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    How would you rate their care of your item?
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.comment && (
-              <p className="text-sm text-red-500">{errors.comment.message}</p>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            
+            <FormField
+              control={form.control}
+              name="comment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comments</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Share your experience with this borrower..."
+                      className="resize-none"
+                      rows={4}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Provide details about how the item was returned and your overall experience.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+          
+          <CardFooter className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocation(`/profile/${userId}`)}
+            >
               Cancel
             </Button>
-          )}
-          <Button
-            type="submit"
-            disabled={isSubmitting || selectedRating === 0}
-            className="ml-auto"
-          >
-            {isSubmitting ? "Submitting..." : "Submit Rating"}
-          </Button>
-        </CardFooter>
-      </form>
+            <Button 
+              type="submit"
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? "Submitting..." : "Submit Rating"}
+            </Button>
+          </CardFooter>
+        </form>
+      </Form>
     </Card>
   );
 }
