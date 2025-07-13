@@ -35,6 +35,7 @@ export default function ItemUpload() {
   const [activeTab, setActiveTab] = useState<"camera" | "upload" | "review">("upload");
   const [itemImage, setItemImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   // Redirect if not logged in or not verified
   if (!user) {
@@ -56,9 +57,17 @@ export default function ItemUpload() {
   }
   
   // Fetch categories
-  const { data: categories = [] as Category[] } = useQuery<Category[]>({
+  const { data: categories = [] as Category[], isLoading: categoriesLoading, error: categoriesError } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
   });
+
+  if (categoriesLoading) {
+    return <div className="container max-w-4xl py-10 text-center">Loading categories...</div>;
+  }
+
+  if (categoriesError || !categories || categories.length === 0) {
+    return <div className="container max-w-4xl py-10 text-center text-red-600">Unable to load categories. Please try again later or contact support.</div>;
+  }
   
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
@@ -125,13 +134,20 @@ export default function ItemUpload() {
       // userId will be automatically added by apiRequest function
       return apiRequest("POST", "/api/items", formData);
     },
-    onSuccess: () => {
+    onSuccess: (createdItem: any) => {
       toast({
         title: "Item Listed Successfully",
         description: "Your item has been added to the marketplace.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/items'] });
-      navigate("/my-items");
+      // Redirect to item detail page if ID is available, else fallback to /my-items
+      if (createdItem && createdItem.id) {
+        setIsRedirecting(true);
+        setTimeout(() => navigate(`/items/${createdItem.id}`), 1200);
+      } else {
+        setIsRedirecting(true);
+        setTimeout(() => navigate("/my-items"), 1200);
+      }
     },
     onError: (error: any) => {
       // Check if this is a validation error response from the server
@@ -178,6 +194,14 @@ export default function ItemUpload() {
   
   return (
     <div className="container max-w-4xl py-10">
+      {isRedirecting && (
+        <div className="fixed inset-0 flex items-center justify-center bg-white/80 z-50">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="text-lg font-medium">Redirecting...</div>
+          </div>
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">List an Item for Rent</CardTitle>

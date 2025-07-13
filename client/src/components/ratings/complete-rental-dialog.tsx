@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth-context";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface CompleteRentalDialogProps {
   children: ReactNode;
@@ -19,78 +21,62 @@ interface CompleteRentalDialogProps {
   otherUserId: number;
 }
 
-export function CompleteRentalDialog({
-  children,
-  rentalRequestId,
-  otherUserId,
-}: CompleteRentalDialogProps) {
-  const [open, setOpen] = useState(false);
-  const { toast } = useToast();
+export function CompleteRentalDialog({ rentalRequest, onStatusChange }: { rentalRequest: any, onStatusChange?: () => void }) {
+  const { user } = useAuth();
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [showRating, setShowRating] = useState(false);
 
-  const mutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest(
-        "PATCH",
-        `/api/rental-requests/${rentalRequestId}/complete`,
-        {}
-      );
-    },
-    onSuccess: () => {
-      toast({
-        title: "Rental marked as completed",
-        description: "The rental has been marked as completed.",
-      });
-      
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["/api/my-rental-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/my-items/rental-requests"] });
-      
-      setOpen(false);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to complete the rental. Please try again.",
-        variant: "destructive",
-      });
-      console.error("Error completing rental:", error);
-    },
+  // Mark as completed mutation
+  const completeMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/rental-requests/${rentalRequest.id}/status`, { status: "completed" }),
+    onSuccess: () => onStatusChange && onStatusChange(),
   });
 
+  // Submit rating mutation
+  const ratingMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/rental-ratings", {
+      rentalRequestId: rentalRequest.id,
+      rating,
+      comment,
+    }),
+    onSuccess: () => setShowRating(false),
+  });
+
+  // Check if user can mark as completed
+  const isLender = user && rentalRequest.item?.ownerId === user.id;
+  const isBorrower = user && rentalRequest.requesterId === user.id;
+  const hasLenderCompleted = rentalRequest.completedByLender;
+  const hasBorrowerCompleted = rentalRequest.completedByBorrower;
+
+  // Only show complete button if user is party and hasn't completed
+  const canMarkCompleted = (isLender && !hasLenderCompleted) || (isBorrower && !hasBorrowerCompleted);
+  // Only show rating if both completed, user is lender, and not already rated
+  const canRate = isLender && hasLenderCompleted && hasBorrowerCompleted && !rentalRequest.hasRated;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Complete Rental</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to mark this rental as complete?
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="py-4">
-          <p className="text-sm text-gray-500">
-            By completing this rental, you're confirming that:
-          </p>
-          <ul className="list-disc pl-5 mt-2 text-sm text-gray-500 space-y-1">
-            <li>The rental period has ended</li>
-            <li>The item has been returned (if you're the lender)</li>
-            <li>You've returned the item (if you're the borrower)</li>
-          </ul>
+    <div>
+      {canMarkCompleted && (
+        <button onClick={() => completeMutation.mutate()} disabled={completeMutation.isLoading}>
+          Mark as Completed
+        </button>
+      )}
+      {canRate && (
+        <div>
+          <button onClick={() => setShowRating(true)}>Rate Borrower</button>
+          {showRating && (
+            <form onSubmit={e => { e.preventDefault(); ratingMutation.mutate(); }}>
+              <label>Rating (1-5):
+                <input type="number" min={1} max={5} value={rating} onChange={e => setRating(Number(e.target.value))} />
+              </label>
+              <label>Comment:
+                <input type="text" value={comment} onChange={e => setComment(e.target.value)} />
+              </label>
+              <button type="submit" disabled={ratingMutation.isLoading}>Submit Rating</button>
+            </form>
+          )}
         </div>
-        
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? "Completing..." : "Complete Rental"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      )}
+    </div>
   );
 }

@@ -7,7 +7,8 @@ import {
   items, Item, InsertItem,
   rentalRequests, RentalRequest, InsertRentalRequest,
   ratings, Rating, InsertRating,
-  messages, Message, InsertMessage
+  messages, Message, InsertMessage,
+  rentalRatings, RentalRating, InsertRentalRating
 } from "@shared/schema";
 import { IStorage } from "./storage";
 
@@ -240,22 +241,70 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(messages.createdAt));
   }
 
-  async getConversation(user1Id: number, user2Id: number): Promise<Message[]> {
+  async getConversation(user1Id: number, user2Id: number, itemId?: number): Promise<Message[]> {
+    const conditions = [
+      or(
+        and(
+          eq(messages.fromUserId, user1Id),
+          eq(messages.toUserId, user2Id)
+        ),
+        and(
+          eq(messages.fromUserId, user2Id),
+          eq(messages.toUserId, user1Id)
+        )
+      )
+    ];
+    
+    // If itemId is provided, filter by item
+    if (itemId) {
+      conditions.push(eq(messages.itemId, itemId));
+    }
+    
     return await db
       .select()
       .from(messages)
-      .where(
-        or(
-          and(
-            eq(messages.fromUserId, user1Id),
-            eq(messages.toUserId, user2Id)
-          ),
-          and(
-            eq(messages.fromUserId, user2Id),
-            eq(messages.toUserId, user1Id)
-          )
-        )
-      )
+      .where(and(...conditions))
       .orderBy(desc(messages.createdAt));
+  }
+
+  async createRentalRating(rating: InsertRentalRating): Promise<RentalRating> {
+    const [newRating] = await db.insert(rentalRatings).values(rating).returning();
+    return newRating;
+  }
+
+  async getRentalRatingByRequestAndRater(rentalRequestId: number, ratedBy: number): Promise<RentalRating | undefined> {
+    const [rating] = await db
+      .select()
+      .from(rentalRatings)
+      .where(
+        and(
+          eq(rentalRatings.rentalRequestId, rentalRequestId),
+          eq(rentalRatings.ratedBy, ratedBy)
+        )
+      );
+    return rating;
+  }
+
+  async getRentalRatingsForUser(userId: number): Promise<RentalRating[]> {
+    // Get all ratings where the user was the requester of the rental
+    return await db
+      .select()
+      .from(rentalRatings)
+      .where(
+        sql`${rentalRatings.rentalRequestId} IN (SELECT id FROM rental_requests WHERE requester_id = ${userId})`
+      );
+  }
+
+  async markRentalCompleted(rentalRequestId: number, userId: number, isLender: boolean): Promise<RentalRequest | undefined> {
+    // Update the appropriate flag
+    const update: Partial<RentalRequest> = isLender
+      ? { completedByLender: true }
+      : { completedByBorrower: true };
+    const [updated] = await db
+      .update(rentalRequests)
+      .set(update)
+      .where(eq(rentalRequests.id, rentalRequestId))
+      .returning();
+    return updated;
   }
 }

@@ -9,71 +9,67 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { MessageCircle, Send, User } from "lucide-react";
+import { useSearch } from "wouter";
 
 export default function Messages() {
   const { user } = useAuth();
-  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [searchParams] = useSearch();
+  // Parse userId and itemId from query params for direct navigation
+  const urlParams = new URLSearchParams(searchParams);
+  const initialUserId = urlParams.get("userId") ? parseInt(urlParams.get("userId")!) : null;
+  const initialItemId = urlParams.get("itemId") ? parseInt(urlParams.get("itemId")!) : null;
+  // State for selected conversation (userId + itemId)
+  const [selected, setSelected] = useState<{ userId: number; itemId: number } | null>(
+    initialUserId && initialItemId ? { userId: initialUserId, itemId: initialItemId } : null
+  );
   const [messageText, setMessageText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get all conversations for the current user
-  const { data: conversations, isLoading: conversationsLoading } = useQuery({
-    queryKey: ["/api/messages/conversations"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    enabled: !!user
+  // Get all rental-based conversations for the current user
+  const { data: threads, isLoading: threadsLoading, error: threadsError } = useQuery({
+    queryKey: ["/api/messages/threads"],
+    queryFn: () => apiRequest("GET", "/api/messages/threads"),
+    enabled: !!user,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Get messages for the selected conversation
-  const { data: messages, isLoading: messagesLoading } = useQuery({
-    queryKey: ["/api/messages/conversation", selectedConversation],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    enabled: !!user && selectedConversation !== null,
-    refetchInterval: 5000 // Refetch every 5 seconds to see new messages
+  const { data: messages, isLoading: messagesLoading, error: messagesError } = useQuery({
+    queryKey: ["/api/messages/thread", selected?.userId, selected?.itemId],
+    queryFn: () => selected ? apiRequest("GET", `/api/messages/thread?userId=${selected.userId}&itemId=${selected.itemId}`) : [],
+    enabled: !!user && !!selected,
+    refetchInterval: 5000,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Get user info about the other person in the conversation
-  const { data: otherUser, isLoading: otherUserLoading } = useQuery({
-    queryKey: ["/api/users", selectedConversation],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    enabled: !!user && selectedConversation !== null
-  });
-
-  // Get all users (for demo purposes)
-  const { data: allUsers, isLoading: allUsersLoading } = useQuery({
-    queryKey: ["/api/users"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    enabled: !!user && (!conversations || conversations.length === 0)
+  const { data: otherUser, isLoading: otherUserLoading, error: otherUserError } = useQuery({
+    queryKey: ["/api/users", selected?.userId],
+    queryFn: () => selected ? apiRequest("GET", `/api/users/${selected.userId}/profile`) : null,
+    enabled: !!user && !!selected,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Send a message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ toUserId, content, itemId }: { toUserId: number, content: string, itemId?: number }) => {
-      return apiRequest("POST", "/api/messages", { toUserId, content, itemId });
+    mutationFn: async ({ toUserId, content, itemId }: { toUserId: number, content: string, itemId: number }) => {
+      return apiRequest("POST", "/api/messages/send", { toUserId, content, itemId });
     },
     onSuccess: () => {
-      // Invalidate and refetch the conversation
-      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedConversation] });
-      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });
       setMessageText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/thread", selected?.userId, selected?.itemId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/threads"] });
     }
   });
 
-  // Scroll to bottom of messages when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageText.trim() || !selectedConversation) return;
-
-    sendMessageMutation.mutate({
-      toUserId: selectedConversation,
-      content: messageText
-    });
-  };
 
   // Format timestamp to a user-friendly format
   const formatTimestamp = (timestamp: string) => {
@@ -81,26 +77,19 @@ export default function Messages() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Get the latest messages for each conversation
-  const conversationPreviews = conversations
-    ? Object.values(conversations).map((convo: any) => {
-        // Format the timestamp
-        const timestamp = new Date(convo.lastMessage.createdAt);
-        const timeStr = formatTimestamp(timestamp.toISOString());
-        
-        // Determine if it's the selected conversation
-        const isSelected = selectedConversation === convo.userId;
-        
-        return {
-          userId: convo.userId,
-          userName: convo.userName,
-          userHostel: convo.userHostel,
-          lastMessage: convo.lastMessage.content,
-          timestamp: timeStr,
-          isSelected
-        };
-      })
-    : [];
+  // Prepare thread previews (unique per userId+itemId)
+  const threadPreviews = threads ? threads.map((thread: any) => {
+    const isSelected = selected && thread.userId === selected.userId && thread.itemId === selected.itemId;
+    return {
+      userId: thread.userId,
+      userName: thread.userName,
+      itemId: thread.itemId,
+      itemName: thread.itemName,
+      lastMessage: thread.lastMessage,
+      timestamp: thread.timestamp,
+      isSelected
+    };
+  }) : [];
 
   if (!user) {
     return (
@@ -119,79 +108,70 @@ export default function Messages() {
     );
   }
 
+  // Handle loading state
+  if (threadsLoading) {
+    return (
+      <div className="container py-8">
+        <h1 className="text-3xl font-bold mb-6">Messages</h1>
+        <div className="text-center py-20">
+          <div className="text-lg">Loading your messages...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (threadsError) {
+    return (
+      <div className="container py-8">
+        <h1 className="text-3xl font-bold mb-6">Messages</h1>
+        <div className="text-center py-20 text-red-600">
+          <div className="text-lg">Failed to load messages. Please try again later.</div>
+          <Button 
+            className="mt-4" 
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-6">Messages</h1>
-      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
-        {/* Conversations list */}
+        {/* Thread list: only users with a rental relationship, unique per user+item */}
         <div className="border rounded-lg shadow-sm overflow-hidden bg-white">
           <div className="p-4 bg-gray-50 border-b">
             <h2 className="font-semibold text-gray-700">Conversations</h2>
           </div>
           <div className="overflow-y-auto h-[calc(100%-56px)]">
-            {conversationsLoading ? (
-              <div className="p-4 space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-3 w-full" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : conversationPreviews.length > 0 ? (
+            {threadPreviews.length > 0 ? (
               <div>
-                {conversationPreviews.map((convo) => (
-                  <div 
-                    key={convo.userId}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer ${convo.isSelected ? 'bg-primary/5' : ''}`}
-                    onClick={() => setSelectedConversation(convo.userId)}
+                {threadPreviews.map((thread: any) => (
+                  <div
+                    key={thread.userId + "-" + thread.itemId}
+                    className={`p-4 hover:bg-gray-50 cursor-pointer ${thread.isSelected ? 'bg-primary/5' : ''}`}
+                    onClick={() => setSelected({ userId: thread.userId, itemId: thread.itemId })}
                   >
                     <div className="flex items-start space-x-3">
                       <Avatar>
-                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${convo.userName}`} />
+                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${thread.userName}`} />
                         <AvatarFallback><User /></AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between">
-                          <p className="font-medium text-gray-900 truncate">{convo.userName}</p>
-                          <span className="text-xs text-gray-500">{convo.timestamp}</span>
+                          <p className="font-medium text-gray-900 truncate">{thread.userName}</p>
+                          <span className="text-xs text-gray-500">{thread.timestamp}</span>
                         </div>
-                        <p className="text-sm text-gray-500 truncate">{convo.lastMessage}</p>
-                        <p className="text-xs text-gray-400 mt-1">{convo.userHostel}</p>
+                        <p className="text-sm text-gray-500 truncate">{thread.itemName}</p>
+                        <p className="text-xs text-gray-400 mt-1">{thread.lastMessage}</p>
                       </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            ) : allUsers && allUsers.length > 0 ? (
-              <div>
-                <div className="p-4 text-sm text-gray-500">
-                  You don't have any conversations yet. Start a conversation with someone from your campus:
-                </div>
-                {allUsers
-                  .filter((u: any) => u.id !== user.id)
-                  .map((u: any) => (
-                    <div 
-                      key={u.id}
-                      className="p-4 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => setSelectedConversation(u.id)}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${u.fullName}`} />
-                          <AvatarFallback><User /></AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-900">{u.fullName}</p>
-                          <p className="text-xs text-gray-400">{u.hostel}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
               </div>
             ) : (
               <div className="p-4 text-center text-gray-500">
@@ -201,10 +181,9 @@ export default function Messages() {
             )}
           </div>
         </div>
-        
         {/* Message window */}
         <div className="border rounded-lg shadow-sm overflow-hidden bg-white md:col-span-2 flex flex-col">
-          {selectedConversation ? (
+          {selected ? (
             <>
               {/* Conversation header */}
               <div className="p-4 bg-gray-50 border-b flex items-center space-x-3">
@@ -228,7 +207,6 @@ export default function Messages() {
                   <h2 className="font-semibold text-gray-700">Loading conversation...</h2>
                 )}
               </div>
-              
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
                 {messagesLoading ? (
@@ -249,10 +227,11 @@ export default function Messages() {
                       return (
                         <div key={message.id} className={`flex ${isFromMe ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[75%] ${isFromMe ? 'bg-primary/10' : 'bg-white'} p-3 rounded-lg shadow-sm`}>
-                            <p className="text-gray-800">{message.content}</p>
-                            <p className="text-xs text-gray-500 mt-1 text-right">
-                              {formatTimestamp(message.createdAt)}
-                            </p>
+                            <div className="flex items-center mb-1">
+                              <span className="font-semibold text-xs text-gray-700 mr-2">{isFromMe ? "You" : otherUser?.fullName}</span>
+                              <span className="text-xs text-gray-400">{formatTimestamp(message.createdAt)}</span>
+                            </div>
+                            <div className="text-sm text-gray-900">{message.content}</div>
                           </div>
                         </div>
                       );
@@ -260,44 +239,34 @@ export default function Messages() {
                     <div ref={messagesEndRef} />
                   </div>
                 ) : (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <MessageCircle className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-                      <p>No messages yet</p>
-                      <p className="text-sm mt-1">Say hello to start the conversation!</p>
-                    </div>
-                  </div>
+                  <div className="text-gray-400">No messages yet.</div>
                 )}
               </div>
-              
               {/* Message input */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t bg-white flex items-center space-x-2">
+              <form onSubmit={e => {
+                e.preventDefault();
+                if (!messageText.trim() || !selected) return;
+                sendMessageMutation.mutate({
+                  toUserId: selected.userId,
+                  content: messageText,
+                  itemId: selected.itemId
+                });
+              }} className="p-4 border-t flex gap-2 bg-white">
                 <Input
-                  placeholder="Type a message..."
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
                   className="flex-1"
+                  value={messageText}
+                  onChange={e => setMessageText(e.target.value)}
+                  placeholder="Type a message..."
                 />
-                <Button 
-                  type="submit" 
-                  disabled={!messageText.trim() || sendMessageMutation.isPending}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send
+                <Button type="submit" disabled={sendMessageMutation.isPending || !messageText.trim()}>
+                  <Send className="h-4 w-4 mr-1" /> Send
                 </Button>
               </form>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center text-gray-500 p-8">
-                <MessageCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-700 mb-2">
-                  Select a conversation
-                </h3>
-                <p>
-                  Choose a conversation from the list to start messaging
-                </p>
-              </div>
+            <div className="flex-1 flex items-center justify-center text-gray-400">
+              <MessageCircle className="h-10 w-10 mr-2" />
+              Select a conversation to start messaging
             </div>
           )}
         </div>

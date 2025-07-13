@@ -132,6 +132,8 @@ export const rentalRequests = pgTable("rental_requests", {
   status: text("status").notNull().default("pending"), // pending, approved, rejected, completed
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  completedByLender: boolean("completed_by_lender").notNull().default(false),
+  completedByBorrower: boolean("completed_by_borrower").notNull().default(false),
 });
 
 export const rentalRequestsRelations = relations(rentalRequests, ({ one, many }) => {
@@ -148,11 +150,11 @@ export const rentalRequestsRelations = relations(rentalRequests, ({ one, many })
   };
 });
 
-export const insertRentalRequestSchema = createInsertSchema(rentalRequests).omit({
-  id: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertRentalRequestSchema = z.object({
+  itemId: z.number(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  requesterId: z.number(), // always required
 });
 
 // User ratings
@@ -226,6 +228,16 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+// Rental ratings
+export const rentalRatings = pgTable("rental_ratings", {
+  id: serial("id").primaryKey(),
+  rentalRequestId: integer("rental_request_id").notNull().references(() => rentalRequests.id),
+  rating: integer("rating").notNull(), // 1-5
+  comment: text("comment"),
+  ratedBy: integer("rated_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -247,6 +259,10 @@ export type InsertRating = z.infer<typeof insertRatingSchema>;
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+export const insertRentalRatingSchema = createInsertSchema(rentalRatings).omit({ id: true, createdAt: true });
+export type RentalRating = typeof rentalRatings.$inferSelect;
+export type InsertRentalRating = z.infer<typeof insertRentalRatingSchema>;
 
 // Define relations after all tables are defined to avoid circular dependencies
 export const usersRelations = relations(users, ({ many }) => {

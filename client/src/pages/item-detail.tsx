@@ -108,6 +108,14 @@ export default function ItemDetail() {
 
     setIsSubmittingRental(true);
 
+    // Prepare and log the payload
+    const payload = {
+      itemId: parseInt(id as string),
+      startDate: rentalDates.from ? rentalDates.from.toISOString() : undefined,
+      endDate: rentalDates.to ? rentalDates.to.toISOString() : undefined,
+    };
+    console.log("Rental request payload:", payload);
+
     try {
       const response = await fetch("/api/rental-requests", {
         method: "POST",
@@ -115,15 +123,20 @@ export default function ItemDetail() {
           "Content-Type": "application/json",
           "user-id": user.id.toString(),
         },
-        body: JSON.stringify({
-          itemId: parseInt(id as string),
-          startDate: rentalDates.from.toISOString(),
-          endDate: rentalDates.to.toISOString(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit rental request");
+        let errorMessage = "Failed to submit rental request";
+        try {
+          const data = await response.json();
+          if (data && data.message) {
+            errorMessage = data.message;
+          }
+        } catch (e) {
+          // Ignore JSON parse errors, use fallback message
+        }
+        throw new Error(errorMessage);
       }
 
       toast({
